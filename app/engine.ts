@@ -34,6 +34,14 @@ export function newGame(): Game {
 export function startGame(): Game {
   return { ...newGame(), mode: 'playing' };
 }
+
+export function getScrollSpeed(time: number) {
+  return 140 + Math.min(time * 4.2, 260);
+}
+
+export function getRockCount(time: number) {
+  return Math.min(4, 1 + Math.floor(time / 16));
+}
 export function stepGame(
   g: Game,
   dt: number,
@@ -57,27 +65,34 @@ export function stepGame(
             : Math.max(-move, Math.min(move, target - g.x))),
     ),
   );
-  const speed = 145 + Math.min(g.time * 1.3, 120);
+  const speed = getScrollSpeed(g.time);
   g.spawn -= dt;
   if (g.spawn <= 0) {
-    // Separate rows guarantee at least four open lanes and a clear path to each snack.
-    const lane = Math.floor(random() * 5),
-      snackLane = (lane + 1 + Math.floor(random() * 4)) % 5;
-    g.items.push({
-      kind: 'rock',
-      x: 48 + lane * 96,
-      y: -70,
-      size: 76 + random() * 14,
-      angle: (random() - 0.5) * 0.45,
-    });
+    // The cave gets denser over time, while one lane always remains open.
+    const lanes = [0, 1, 2, 3, 4];
+    for (let i = lanes.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [lanes[i], lanes[j]] = [lanes[j], lanes[i]];
+    }
+    const rockCount = getRockCount(g.time);
+    for (const lane of lanes.slice(0, rockCount)) {
+      g.items.push({
+        kind: 'rock',
+        x: 48 + lane * 96,
+        y: -78 - random() * 22,
+        size: 72 + random() * 18,
+        angle: (random() - 0.5) * 0.45,
+      });
+    }
+    const snackLane = lanes[rockCount];
     g.items.push({
       kind: 'snack',
       x: 48 + snackLane * 96,
-      y: -70,
+      y: -76,
       size: 49,
       angle: (random() - 0.5) * 0.3,
     });
-    g.spawn = Math.max(0.72, 1.2 - g.time * 0.004);
+    g.spawn = Math.max(0.62, 1.22 - g.time * 0.008);
   }
   let ate = false,
     hit = false;

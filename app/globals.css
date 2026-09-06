@@ -3,24 +3,24 @@
 @import 'shadcn/tailwind.css';
 :root,
 .dark {
-  --background: #eaf6f7;
-  --foreground: #173f52;
-  --card: #fffdf4;
+  --background: #071827;
+  --foreground: #e8f8f7;
+  --card: #fff9e8;
   --card-foreground: #173f52;
-  --popover: #fffdf4;
+  --popover: #fff9e8;
   --popover-foreground: #173f52;
-  --primary: #e77e6e;
+  --primary: #f08a75;
   --primary-foreground: #173f52;
-  --secondary: #ceeeee;
-  --secondary-foreground: #173f52;
-  --muted: #dbefef;
-  --muted-foreground: #517984;
-  --accent: #f9d786;
+  --secondary: #153a4b;
+  --secondary-foreground: #e8f8f7;
+  --muted: #143344;
+  --muted-foreground: #94bdc3;
+  --accent: #f2c45e;
   --accent-foreground: #173f52;
   --destructive: #b84941;
-  --border: #b9d9db;
-  --input: #b9d9db;
-  --ring: #268589;
+  --border: #315d6b;
+  --input: #315d6b;
+  --ring: #f2c45e;
   --radius: 1rem;
   --font-sans: 'Hiragino Maru Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
 }
@@ -49,7 +49,8 @@ button:disabled {
 .ocean-page {
   min-height: 100svh;
   background:
-    radial-gradient(ellipse at 70% 50%, #fff9e34a, transparent 55%), #eaf6f7;
+    radial-gradient(ellipse at 68% 42%, #1f6b7840, transparent 42%),
+    linear-gradient(125deg, #061522, #0d2c3b 54%, #071824);
   padding: 0 5vw;
 }
 .topbar {
@@ -100,7 +101,7 @@ button:disabled {
 .intro > p {
   font-size: 16px;
   line-height: 2;
-  color: #557581;
+  color: #a7c9cc;
   margin: 0 0 33px;
 }
 .instruction {
@@ -125,12 +126,12 @@ button:disabled {
 .instruction p {
   font-size: 14px;
   line-height: 1.9;
-  color: #557581;
+  color: #a7c9cc;
   margin: 6px 0 0;
 }
 .small-note {
   font-size: 12px;
-  color: #64858b;
+  color: #8fb8bf;
   margin-top: 32px;
 }
 .game-shell {
@@ -138,9 +139,10 @@ button:disabled {
   border-radius: 26px;
   overflow: hidden;
   box-shadow:
-    0 12px 0 #bfdfe1,
-    0 22px 55px #326e7715;
-  background: #fffdf4;
+    0 12px 0 #0e3547,
+    0 22px 55px #0008;
+  background: #fff9e8;
+  color: #173f52;
 }
 .hud {
   display: flex;
@@ -183,22 +185,32 @@ button:disabled {
   min-height: 410px;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(#78d6de, #9de1df 42%, #39afc3);
+  background: #0b3142;
   touch-action: none;
 }
 .water-light {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    103deg,
-    transparent 0,
-    transparent 65px,
-    #ffffff12 66px,
-    #ffffff12 140px,
-    transparent 142px,
-    transparent 240px
-  );
+  background:
+    radial-gradient(ellipse at 50% 45%, #8be0d71f, transparent 52%),
+    linear-gradient(
+      90deg,
+      #06131c63,
+      transparent 25%,
+      transparent 75%,
+      #06131c63
+    );
   pointer-events: none;
+  z-index: 1;
+  mix-blend-mode: screen;
+}
+.playfield canvas {
+  z-index: 0;
+}
+.playfield .start-card,
+.playfield .darkness,
+.playfield .mobile-controls {
+  z-index: 4;
 }
 .start-card {
   position: absolute;
@@ -295,12 +307,12 @@ button:disabled {
 .side-note > span {
   font-size: 12px;
   line-height: 2.1;
-  color: #62838d;
+  color: #8fb8bf;
 }
 footer {
   text-align: center;
   font-size: 12px;
-  color: #62838d;
+  color: #789ea6;
   padding: 14px 0 20px;
   letter-spacing: 0.5px;
 }
@@ -445,7 +457,7 @@ canvas {
   }
   .game-shell {
     border-radius: 22px;
-    box-shadow: 0 7px 0 #bfdfe1;
+    box-shadow: 0 7px 0 #0e3547;
   }
   .hud {
     height: 69px;
@@ -502,13 +514,10 @@ canvas {
   }
 }
 .sprite-preview {
-  width: 115px;
-  height: 115px;
-  margin: -7px auto 0;
-  background-image: url(/sprites.png);
-  background-size: 300% 100%;
-  background-position: left center;
-  background-repeat: no-repeat;
+  width: 108px;
+  height: 118px;
+  margin: -10px auto 0;
+  background: url(/mermaid-back.png) center / contain no-repeat;
 }
 .with-sprite .tiny-caps {
   display: block;

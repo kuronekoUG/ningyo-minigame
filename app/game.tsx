@@ -13,6 +13,7 @@ import {
   newGame,
   startGame,
   stepGame,
+  getScrollSpeed,
   WIDTH,
   HEIGHT,
   PLAYER_Y,
@@ -27,6 +28,8 @@ export default function GamePanel() {
     target = useRef<number | null>(null),
     held = useRef(0),
     sprite = useRef<HTMLImageElement | null>(null),
+    mermaid = useRef<HTMLImageElement | null>(null),
+    cave = useRef<HTMLImageElement | null>(null),
     sound = useRef(false),
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
@@ -84,13 +87,30 @@ export default function GamePanel() {
     }
   }
   useEffect(() => {
+    let assetsReady = 0;
+    const ready = () => {
+      assetsReady += 1;
+      if (assetsReady === 3) setLoaded(true);
+    };
     const img = new Image();
+    const hero = new Image();
+    const caveImage = new Image();
     img.onload = () => {
       sprite.current = img;
-      setLoaded(true);
+      ready();
     };
-    img.onerror = () => setAssetError(true);
+    hero.onload = () => {
+      mermaid.current = hero;
+      ready();
+    };
+    caveImage.onload = () => {
+      cave.current = caveImage;
+      ready();
+    };
+    img.onerror = hero.onerror = caveImage.onerror = () => setAssetError(true);
     img.src = '/sprites.png';
+    hero.src = '/mermaid-back.png';
+    caveImage.src = '/cave-course.png';
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -155,16 +175,15 @@ export default function GamePanel() {
       const ctx = canvas.current?.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
-        // Quiet drifting bubbles and bands make the forward scroll visible.
-        ctx.strokeStyle = '#f1ffff6b';
-        ctx.lineWidth = 1.5;
-        for (let i = 0; i < 26; i++) {
-          const x = 17 + ((i * 97) % 450) + Math.sin(ambient * 0.45 + i) * 8,
-            y = ((i * 87 + ambient * 45) % 750) - 50;
-          ctx.beginPath();
-          ctx.arc(x, y, 2 + (i % 4), 0, Math.PI * 2);
-          ctx.stroke();
+        const bgSpeed =
+          g.mode === 'playing' ? getScrollSpeed(g.time) * 0.38 : 25;
+        const bgOffset = (ambient * bgSpeed) % HEIGHT;
+        if (cave.current) {
+          ctx.drawImage(cave.current, 0, bgOffset - HEIGHT, WIDTH, HEIGHT);
+          ctx.drawImage(cave.current, 0, bgOffset, WIDTH, HEIGHT);
         }
+        ctx.fillStyle = '#0718272c';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
         const draw = (
           cell: number,
           x: number,
@@ -196,18 +215,20 @@ export default function GamePanel() {
           draw(2, 423, 368, 95, -0.15, 0.65);
           draw(1, 350, 95, 60, 0.2);
           draw(1, 95, 430, 51, -0.2);
-          draw(0, 240, 548, 92, Math.sin(ambient * 3) * 0.08);
+          if (mermaid.current) {
+            ctx.drawImage(mermaid.current, 190, 493, 100, 100);
+          }
         } else {
           for (const i of g.items) {
             draw(i.kind === 'rock' ? 2 : 1, i.x, i.y, i.size, i.angle);
           }
-          draw(
-            0,
-            g.x,
-            PLAYER_Y,
-            85,
-            g.mode === 'playing' ? Math.sin(g.time * 7) * 0.075 : 0,
-          );
+          if (mermaid.current) {
+            ctx.save();
+            ctx.translate(g.x, PLAYER_Y);
+            ctx.rotate(g.mode === 'playing' ? Math.sin(g.time * 7) * 0.055 : 0);
+            ctx.drawImage(mermaid.current, -45, -52, 90, 104);
+            ctx.restore();
+          }
           for (const p of g.pops) {
             ctx.globalAlpha = p.life;
             ctx.fillStyle = '#fffce8';
@@ -233,6 +254,10 @@ export default function GamePanel() {
       document.removeEventListener('visibilitychange', visibility);
       img.onload = null;
       img.onerror = null;
+      hero.onload = null;
+      hero.onerror = null;
+      caveImage.onload = null;
+      caveImage.onerror = null;
       void audio.current?.close();
     };
   }, []);
@@ -307,12 +332,12 @@ export default function GamePanel() {
         {mode === 'ready' && (
           <div className="start-card with-sprite">
             <div className="sprite-preview" aria-hidden="true" />
-            <span className="tiny-caps">SHIRUKO SAND SWIM</span>
-            <h2>おやつの時間だ！</h2>
+            <span className="tiny-caps">IN THE HIDDEN CAVE</span>
+            <h2>サクサク……</h2>
             <p>
-              岩をよけて、しるこサンドを
+              洞窟の岩をよけて、しるこサンドを
               <br />
-              たくさん食べよう。
+              たどっていこう。
             </p>
             <button
               className="primary-button"
@@ -323,8 +348,8 @@ export default function GamePanel() {
               {assetError
                 ? '読み込みに失敗しました'
                 : loaded
-                  ? '泳ぎはじめる'
-                  : '海を準備しています…'}
+                  ? '洞窟へすすむ'
+                  : '洞窟を準備しています…'}
             </button>
             {assetError ? (
               <p>ページを再読み込みしてください。</p>
@@ -336,8 +361,8 @@ export default function GamePanel() {
         {mode === 'paused' && (
           <div className="start-card">
             <span className="tiny-caps">TAKE A LITTLE BREAK</span>
-            <h2>ちょっと、ひとやすみ。</h2>
-            <p>準備ができたら、つづきから。</p>
+            <h2>しーん……。</h2>
+            <p>洞窟の中で、ちょっとひとやすみ。</p>
             <button ref={primary} className="primary-button" onClick={pause}>
               <Play size={18} />
               泳ぎつづける
@@ -349,7 +374,7 @@ export default function GamePanel() {
           <div className="start-card over-card">
             <span className="tiny-caps">GAME OVER</span>
             <h2>……みつかっちゃった。</h2>
-            <p>海の奥で、なにかが動いた。</p>
+            <p>暗いところで、なにかが動いた。</p>
             <div className="score-result">
               <strong>{score}</strong>
               <span>pt</span>
@@ -392,7 +417,7 @@ export default function GamePanel() {
               ? 'また、おやつを探しに。'
               : mode === 'paused'
                 ? 'ひとやすみ中'
-                : 'のんびり泳ごう'}
+                : '気づかれないように…'}
         </span>
         <span>{mode === 'playing' ? '← → / なぞって移動' : '岩に注意！'}</span>
       </div>

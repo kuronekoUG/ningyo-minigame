@@ -12,7 +12,7 @@ export default function Home() {
       </header>
       <div className="game-layout">
         <aside className="intro">
-          <div className="eyebrow">おやつをさがして、すいすい。</div>
+          <div className="eyebrow">暗い洞窟に、サクサクの音。</div>
           <h1>
             人魚の
             <br />
@@ -21,9 +21,9 @@ export default function Home() {
             さんぽ
           </h1>
           <p>
-            ひとくち分の、しあわせ。
+            岩陰につづく、おやつの道。
             <br />
-            でも、岩には気をつけて。
+            奥にいる誰かには、気づかないまま。
           </p>
           <div className="instruction">
             <span className="step">01</span>
@@ -43,7 +43,7 @@ export default function Home() {
               <p>岩にぶつかったら、おしまい。</p>
             </div>
           </div>
-          <div className="small-note">のんびり、でも油断はしないでね。</div>
+          <div className="small-note">進むほど、流れも岩も激しくなるよ。</div>
         </aside>
         <GamePanel />
         <aside className="side-note">
@@ -53,7 +53,7 @@ export default function Home() {
             つられちゃった。
           </div>
           <span>
-            海の向こうには
+            洞窟の奥には
             <br />
             なにがいるんだろう。
           </span>
