@@ -139,7 +139,7 @@ export default function GamePanel() {
       caveImage.onerror =
         () => setAssetError(true);
     img.src = withBase('/sprites.png');
-    hero.src = withBase('/mermaid-back-handdrawn-v3.png');
+    hero.src = withBase('/mermaid-rough.png');
     rockImage.src = withBase('/rock-handdrawn.png');
     caveImage.src = withBase('/cave-course-rough.jpg');
     const down = (e: KeyboardEvent) => {
@@ -471,7 +471,7 @@ export default function GamePanel() {
           <div className="start-card with-sprite">
             <NextImage
               className="sprite-preview"
-              src={withBase('/mermaid-back-handdrawn-v3.png')}
+              src={withBase('/mermaid-rough.png')}
               alt=""
               width={108}
               height={108}
