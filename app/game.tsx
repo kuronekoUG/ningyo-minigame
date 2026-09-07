@@ -451,7 +451,7 @@ export default function GamePanel() {
         onPointerCancel={release}
         onLostPointerCapture={release}
       >
-        <div className="water-light" />
+        <div className="cave-light" />
         <canvas
           ref={canvas}
           width={WIDTH}

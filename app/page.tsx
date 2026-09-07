@@ -5,7 +5,7 @@ import { withBase } from './base-path';
 import GamePanel from './game';
 export default function Home() {
   return (
-    <main className="ocean-page">
+    <main className="cave-page">
       <header className="topbar">
         <span>
           <Cookie size={23} /> しるこさんぽ
