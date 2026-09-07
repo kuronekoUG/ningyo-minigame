@@ -328,7 +328,7 @@ export default function GamePanel() {
       hashtags: 'しるこさんぽ',
     });
     window.open(
-      `https://twitter.com/intent/tweet?${params.toString()}`,
+      `https://x.com/intent/post?${params.toString()}`,
       '_blank',
       'noopener,noreferrer,width=620,height=720',
     );
@@ -463,11 +463,7 @@ export default function GamePanel() {
               </span>
               Xでスコアをポスト
             </button>
-            <button
-              ref={primary}
-              className="primary-button"
-              onClick={start}
-            >
+            <button ref={primary} className="primary-button" onClick={start}>
               <RotateCcw size={18} />
               もういちどすすむ
             </button>
