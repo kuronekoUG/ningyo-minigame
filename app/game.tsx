@@ -26,9 +26,6 @@ import {
 import { GAME_OVER_LINES } from './game-over-lines';
 import { withBase } from './base-path';
 
-// Sprite sheet holds three square cells side by side.
-const SPRITE_CELL = 192;
-
 export default function GamePanel() {
   const canvas = useRef<HTMLCanvasElement>(null),
     field = useRef<HTMLDivElement>(null),
@@ -136,10 +133,10 @@ export default function GamePanel() {
       caveImage.onerror =
       scaleImage.onerror =
         () => setAssetError(true);
-    img.src = withBase('/sprites.png');
+    img.src = withBase('/snack-rough.png');
     hero.src = withBase('/mermaid-rough.png');
-    rockImage.src = withBase('/rock-handdrawn.png');
-    caveImage.src = withBase('/cave-course-rough.jpg');
+    rockImage.src = withBase('/rock-rough.png');
+    caveImage.src = withBase('/cave-rough.jpg');
     scaleImage.src = withBase('/scale.png');
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
@@ -235,8 +232,7 @@ export default function GamePanel() {
         // サクサクタイム warms the cave instead of darkening it.
         ctx.fillStyle = g.fever > 0 ? '#f7b04724' : '#0718272c';
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
-        const draw = (
-          cell: number,
+        const drawSnack = (
           x: number,
           y: number,
           size: number,
@@ -248,17 +244,7 @@ export default function GamePanel() {
           ctx.globalAlpha = alpha;
           ctx.translate(x, y);
           ctx.rotate(angle);
-          ctx.drawImage(
-            sprite.current,
-            cell * SPRITE_CELL,
-            0,
-            SPRITE_CELL,
-            SPRITE_CELL,
-            -size / 2,
-            -size / 2,
-            size,
-            size,
-          );
+          ctx.drawImage(sprite.current, -size / 2, -size / 2, size, size);
           ctx.restore();
         };
         const drawRock = (
@@ -279,8 +265,8 @@ export default function GamePanel() {
         if (g.mode === 'ready') {
           drawRock(65, 85, 107, 0.1, 0.7);
           drawRock(423, 368, 95, -0.15, 0.65);
-          draw(1, 350, 95, 60, 0.2);
-          draw(1, 95, 430, 51, -0.2);
+          drawSnack(350, 95, 60, 0.2);
+          drawSnack(95, 430, 51, -0.2);
           if (mermaid.current) {
             ctx.drawImage(mermaid.current, 188, 491, 104, 104);
           }
@@ -312,7 +298,7 @@ export default function GamePanel() {
               );
               ctx.restore();
             } else {
-              draw(1, i.x, i.y, i.size, i.angle);
+              drawSnack(i.x, i.y, i.size, i.angle);
             }
           }
           if (mermaid.current) {
@@ -339,18 +325,18 @@ export default function GamePanel() {
             const top = g.fever > 0;
             const multiple = top ? MAX_MULTIPLIER : getMultiplier(g.combo);
             ctx.save();
-            ctx.textAlign = 'left';
-            ctx.font = 'bold 30px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.font = 'bold 32px sans-serif';
             ctx.lineWidth = 6;
             ctx.strokeStyle = '#08222f';
-            ctx.strokeText(`×${multiple}`, 18, 610);
+            ctx.strokeText(`×${multiple}`, 462, 52);
             ctx.fillStyle = top ? '#ffe9a8' : '#ffd98a';
-            ctx.fillText(`×${multiple}`, 18, 610);
+            ctx.fillText(`×${multiple}`, 462, 52);
             const width = top ? 1 : Math.max(0, g.comboTimer / COMBO_WINDOW);
             ctx.fillStyle = '#08222f88';
-            ctx.fillRect(18, 618, 64, 5);
+            ctx.fillRect(398, 62, 64, 5);
             ctx.fillStyle = top ? '#ffe9a8' : '#ffd98a';
-            ctx.fillRect(18, 618, 64 * width, 5);
+            ctx.fillRect(398 + 64 * (1 - width), 62, 64 * width, 5);
             ctx.restore();
           }
           if (g.fever > 0) {

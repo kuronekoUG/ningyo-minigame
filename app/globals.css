@@ -483,6 +483,12 @@ canvas {
     font-size: 38px;
   }
 }
+/* On a phone the card is narrow enough that 16px copy breaks mid-phrase. */
+@media (max-width: 420px) {
+  .start-card p {
+    font-size: 14px;
+  }
+}
 .sr-only {
   position: absolute;
   width: 1px;
