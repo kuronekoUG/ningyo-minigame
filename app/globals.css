@@ -283,93 +283,6 @@ button:disabled {
   font-size: 12px;
   border-top: 2px solid #295568;
 }
-.ranking-board {
-  padding: 11px 16px 14px;
-  border-top: 1px dashed #9cb9b7;
-  background: #f4eedb;
-}
-.ranking-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.ranking-heading > span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1px;
-}
-.ranking-heading a {
-  color: #68828a;
-  font-size: 10px;
-  font-weight: 700;
-  text-underline-offset: 3px;
-}
-.ranking-list {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ranking-list li {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: center;
-  align-items: baseline;
-  column-gap: 3px;
-  min-width: 0;
-  padding: 6px 3px 7px;
-  border: 1px solid #b7c9c6;
-  border-radius: 8px 11px 7px 10px;
-  background: #fffaf0;
-}
-.ranking-list li > span {
-  grid-column: 1 / -1;
-  color: #58727b;
-  font-size: 10px;
-}
-.ranking-list b {
-  grid-column: 1 / -1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ranking-list strong {
-  min-width: 0;
-  overflow: hidden;
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-}
-.ranking-list small {
-  font-size: 9px;
-}
-.ranking-list li.latest {
-  border-color: #e26a61;
-  background: #fff1df;
-  box-shadow: 2px 2px 0 #e8b994;
-}
-.ranking-list li.latest > span::after {
-  content: ' 今回';
-  color: #c4504d;
-  font-weight: 800;
-}
-.ranking-empty {
-  margin: 0;
-  padding: 8px;
-  border: 1px dashed #b7c9c6;
-  border-radius: 8px;
-  color: #58727b;
-  text-align: center;
-  font-size: 12px;
-}
 .live-dot {
   display: inline-block;
   width: 6px;
@@ -445,10 +358,6 @@ canvas {
 .score-result strong {
   font-size: 45px;
 }
-.over-card .result-note {
-  margin-bottom: 18px;
-  line-height: 1.7;
-}
 .over-card .game-over-line {
   display: grid;
   min-height: 2.5em;
@@ -457,51 +366,29 @@ canvas {
   font-size: clamp(20px, 5vw, 27px);
   line-height: 1.25;
 }
-.score-entry {
-  margin: -5px 0 18px;
-}
-.score-entry label {
-  display: block;
-  margin-bottom: 7px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1px;
-}
-.score-entry > div {
+.share-button {
   display: flex;
-  gap: 7px;
-}
-.score-entry input {
-  width: 0;
-  flex: 1;
-  border: 2px solid #87aeb1;
-  border-radius: 9px 7px 10px 8px;
-  background: #fffaf0;
-  padding: 9px 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 45px;
+  margin-bottom: 8px;
+  border: 2px solid #5f8d91;
+  border-radius: 50px;
+  background: #e2f0ec;
   color: #173f52;
-  font: inherit;
-  outline: none;
-}
-.score-entry input:focus {
-  border-color: #de675f;
-  box-shadow: 0 0 0 3px #efb6a955;
-}
-.score-entry button {
-  border: 0;
-  border-radius: 8px 10px 7px 9px;
-  background: #e85f59;
-  padding: 0 13px;
-  color: #fff;
   font-weight: 800;
 }
-.score-entry button:disabled {
-  opacity: 0.4;
+.share-button:hover {
+  background: #edf8f4;
 }
-.score-entry-error {
+.share-status {
   display: block;
-  margin-top: 7px;
-  color: #b64141;
-  font-size: 10px;
+  min-height: 20px;
+  margin-bottom: 6px;
+  color: #557581;
+  font-size: 12px;
 }
 .over-card {
   background: #f4f6f4;
@@ -659,10 +546,11 @@ canvas {
   }
 }
 .sprite-preview {
+  display: block;
   width: 108px;
   height: 108px;
   margin: -10px auto 0;
-  background: url(/mermaid-back-handdrawn-v3.png) center / contain no-repeat;
+  object-fit: contain;
 }
 .with-sprite .tiny-caps {
   display: block;
@@ -674,117 +562,4 @@ canvas {
 .icon-button:disabled {
   cursor: default;
   opacity: 0.35;
-}
-
-.ranking-page {
-  min-height: 100svh;
-  padding: 28px 18px 60px;
-  background:
-    radial-gradient(circle at 50% 0, #17475a 0, transparent 42%), #071f2d;
-  color: #173f52;
-}
-.ranking-page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: min(680px, 100%);
-  margin: 0 auto 22px;
-  color: #eaf4eb;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-}
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: inherit;
-  text-decoration: none;
-}
-.ranking-sheet {
-  width: min(680px, 100%);
-  margin: 0 auto;
-  padding: 30px clamp(16px, 5vw, 42px) 40px;
-  border: 2px solid #315d69;
-  border-radius: 22px 27px 20px 25px;
-  background: #fff9e8;
-  box-shadow: 0 9px 0 #0c3b4d;
-}
-.ranking-title-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  color: #d75b55;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 2px;
-}
-.ranking-sheet h1 {
-  margin: 8px 0 4px;
-  text-align: center;
-  font-size: clamp(28px, 7vw, 42px);
-  letter-spacing: 2px;
-}
-.ranking-sheet > p {
-  margin: 0 0 24px;
-  color: #68828a;
-  text-align: center;
-  font-size: 12px;
-}
-.ranking-table {
-  display: grid;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ranking-table li {
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) 60px 92px;
-  align-items: center;
-  min-height: 42px;
-  padding: 5px 12px;
-  border-bottom: 1px dashed #b9cac5;
-}
-.ranking-table li.podium {
-  border: 1px solid #e7c39d;
-  border-radius: 8px 11px 7px 10px;
-  background: #fff0dc;
-}
-.ranking-position {
-  color: #d75b55;
-  font-size: 18px;
-  font-weight: 900;
-}
-.ranking-table strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ranking-date {
-  color: #789197;
-  font-size: 11px;
-}
-.ranking-score {
-  text-align: right;
-  font-size: 18px;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-}
-.ranking-score small {
-  font-size: 10px;
-}
-@media (max-width: 520px) {
-  .ranking-page {
-    padding-inline: 10px;
-  }
-  .ranking-table li {
-    grid-template-columns: 34px minmax(0, 1fr) 74px;
-    padding-inline: 8px;
-  }
-  .ranking-date {
-    display: none;
-  }
 }

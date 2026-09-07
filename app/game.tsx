@@ -5,11 +5,11 @@ import {
   Pause,
   Play,
   RotateCcw,
-  Trophy,
+  Share2,
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import Link from 'next/link';
+import NextImage from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import {
   newGame,
@@ -22,12 +22,8 @@ import {
   type Mode,
 } from './engine';
 import { GAME_OVER_LINES } from './game-over-lines';
-import {
-  addRanking,
-  getRankings,
-  getSavedPlayerName,
-  type RankingEntry,
-} from './ranking-store';
+
+const ASSET_BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export default function GamePanel() {
   const canvas = useRef<HTMLCanvasElement>(null),
@@ -44,21 +40,15 @@ export default function GamePanel() {
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     lastGameOverLine = useRef(0),
-    nameInput = useRef<HTMLInputElement>(null),
     primary = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>('ready'),
     [score, setScore] = useState(0),
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(true),
-    [ranking, setRanking] = useState<RankingEntry[]>([]),
-    [latestRank, setLatestRank] = useState<number | null>(null),
-    [playerName, setPlayerName] = useState(''),
-    [registered, setRegistered] = useState(false),
-    [submittingScore, setSubmittingScore] = useState(false),
-    [rankingStatus, setRankingStatus] = useState<'loading' | 'ready' | 'error'>(
-      'loading',
-    ),
+    [shareStatus, setShareStatus] = useState<
+      'idle' | 'shared' | 'copied' | 'error'
+    >('idle'),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
   function tone(hit = false) {
     if (!sound.current) return;
@@ -89,8 +79,7 @@ export default function GamePanel() {
     keys.current.clear();
     held.current = 0;
     target.current = null;
-    setLatestRank(null);
-    setRegistered(false);
+    setShareStatus('idle');
     setScore(0);
     setMode('playing');
     field.current?.focus();
@@ -134,10 +123,10 @@ export default function GamePanel() {
       rockImage.onerror =
       caveImage.onerror =
         () => setAssetError(true);
-    img.src = '/sprites.png';
-    hero.src = '/mermaid-back-handdrawn-v3.png';
-    rockImage.src = '/rock-handdrawn.png';
-    caveImage.src = '/cave-course-rough.png';
+    img.src = `${ASSET_BASE}/sprites.png`;
+    hero.src = `${ASSET_BASE}/mermaid-back-handdrawn-v3.png`;
+    rockImage.src = `${ASSET_BASE}/rock-handdrawn.png`;
+    caveImage.src = `${ASSET_BASE}/cave-course-rough.png`;
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -337,44 +326,34 @@ export default function GamePanel() {
       void audio.current?.close();
     };
   }, []);
-  useEffect(() => {
-    let active = true;
-    void getRankings()
-      .then((entries) => {
-        if (!active) return;
-        setPlayerName(getSavedPlayerName());
-        setRanking(entries.slice(0, 5));
-        setRankingStatus('ready');
-      })
-      .catch(() => {
-        if (!active) return;
-        setPlayerName(getSavedPlayerName());
-        setRankingStatus('error');
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  async function registerScore(event: React.SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (registered || submittingScore || !playerName.trim()) return;
-    setSubmittingScore(true);
+  async function shareScore() {
+    const title = '人魚のしるこサンドさんぽ';
+    const text = `${title}で ${score}pt！\n岩をよけて、しるこサンドを集めよう。`;
+    const url = window.location.href;
+    setShareStatus('idle');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+        setShareStatus('shared');
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+      }
+    }
+
     try {
-      const result = await addRanking(playerName, score);
-      setLatestRank(result.rank);
-      setRanking(result.rankings.slice(0, 5));
-      setRankingStatus('ready');
-      setRegistered(true);
+      const shareText = `${text}\n${url}`;
+      if (!navigator.clipboard?.writeText) throw new Error('copy unavailable');
+      await navigator.clipboard.writeText(shareText);
+      setShareStatus('copied');
     } catch {
-      setRankingStatus('error');
-    } finally {
-      setSubmittingScore(false);
+      setShareStatus('error');
     }
   }
   useEffect(() => {
-    if (mode === 'over' && !registered) nameInput.current?.focus();
-    else if (mode === 'over' || mode === 'paused') primary.current?.focus();
-  }, [mode, registered]);
+    if (mode === 'over' || mode === 'paused') primary.current?.focus();
+  }, [mode]);
   function point(e: React.PointerEvent<HTMLDivElement>) {
     if (game.current.mode !== 'playing') return;
     const box = e.currentTarget.getBoundingClientRect();
@@ -442,7 +421,14 @@ export default function GamePanel() {
         <div className="darkness" />
         {mode === 'ready' && (
           <div className="start-card with-sprite">
-            <div className="sprite-preview" aria-hidden="true" />
+            <NextImage
+              className="sprite-preview"
+              src={`${ASSET_BASE}/mermaid-back-handdrawn-v3.png`}
+              alt=""
+              width={108}
+              height={108}
+              priority
+            />
             <span className="tiny-caps">IN THE HIDDEN CAVE</span>
             <h2>サクサク……</h2>
             <p>
@@ -489,44 +475,23 @@ export default function GamePanel() {
               <strong>{score}</strong>
               <span>pt</span>
             </div>
-            {registered ? (
-              <p className="result-note">
-                {playerName.trim()}さんは
-                {latestRank ? ` ${latestRank} 位！` : ' ランキング圏外'}
-              </p>
-            ) : (
-              <form className="score-entry" onSubmit={registerScore}>
-                <label htmlFor="player-name">ランキングに登録</label>
-                <div>
-                  <input
-                    ref={nameInput}
-                    id="player-name"
-                    value={playerName}
-                    onChange={(event) => setPlayerName(event.target.value)}
-                    maxLength={10}
-                    placeholder="なまえ"
-                    autoComplete="name"
-                    aria-label="ランキングに登録する名前"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!playerName.trim() || submittingScore}
-                  >
-                    {submittingScore ? '送信中…' : '登録'}
-                  </button>
-                </div>
-                {rankingStatus === 'error' && (
-                  <small className="score-entry-error">
-                    ランキングに接続できません。もう一度お試しください。
-                  </small>
-                )}
-              </form>
-            )}
+            <button className="share-button" onClick={shareScore}>
+              <Share2 size={18} />
+              スコアを共有
+            </button>
+            <output className="share-status" aria-live="polite">
+              {shareStatus === 'shared'
+                ? '共有しました。'
+                : shareStatus === 'copied'
+                  ? '結果とURLをコピーしました。'
+                  : shareStatus === 'error'
+                    ? '共有できませんでした。'
+                    : ''}
+            </output>
             <button
               ref={primary}
               className="primary-button"
               onClick={start}
-              disabled={submittingScore}
             >
               <RotateCcw size={18} />
               もういちどすすむ
@@ -568,45 +533,6 @@ export default function GamePanel() {
         </span>
         <span>{mode === 'playing' ? '← → / なぞって移動' : '岩に注意！'}</span>
       </div>
-      <section
-        className="ranking-board"
-        aria-label="このブラウザのスコアランキング"
-      >
-        <div className="ranking-heading">
-          <span>
-            <Trophy size={15} /> ランキング
-          </span>
-          <Link href="/ranking">30位まで見る</Link>
-        </div>
-        {ranking.length ? (
-          <ol className="ranking-list">
-            {Array.from({ length: 5 }, (_, index) => {
-              const entry = ranking[index];
-              return (
-                <li
-                  key={entry?.id ?? `empty-${index}`}
-                  className={latestRank === index + 1 ? 'latest' : undefined}
-                >
-                  <span>{index + 1}位</span>
-                  <b>{entry?.name ?? '—'}</b>
-                  <strong>
-                    {entry ? String(entry.score).padStart(4, '0') : '----'}
-                  </strong>
-                  <small>pt</small>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p className="ranking-empty">
-            {rankingStatus === 'loading'
-              ? 'ランキングを読み込み中…'
-              : rankingStatus === 'error'
-                ? 'ランキングに接続できません。'
-                : '最初の記録をつくろう。'}
-          </p>
-        )}
-      </section>
       <output className="sr-only" aria-live="polite">
         {mode === 'over'
           ? `ゲームオーバー。${score}点。`
