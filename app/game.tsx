@@ -20,31 +20,12 @@ import {
   PLAYER_Y,
   type Mode,
 } from './engine';
-
-type RankingEntry = {
-  id: string;
-  score: number;
-  playedAt: string;
-};
-
-const RANKING_KEY = 'shiruko-sand-swim-ranking-v1';
-
-function readRanking() {
-  try {
-    const value = JSON.parse(localStorage.getItem(RANKING_KEY) ?? '[]');
-    if (!Array.isArray(value)) return [];
-    return value
-      .filter(
-        (entry): entry is RankingEntry =>
-          typeof entry?.id === 'string' &&
-          Number.isFinite(entry?.score) &&
-          typeof entry?.playedAt === 'string',
-      )
-      .slice(0, 5);
-  } catch {
-    return [];
-  }
-}
+import {
+  addRanking,
+  getRankings,
+  getSavedPlayerName,
+  type RankingEntry,
+} from './ranking-store';
 
 export default function GamePanel() {
   const canvas = useRef<HTMLCanvasElement>(null),
@@ -60,7 +41,7 @@ export default function GamePanel() {
     sound = useRef(false),
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
-    recordedRun = useRef(false),
+    nameInput = useRef<HTMLInputElement>(null),
     primary = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>('ready'),
     [score, setScore] = useState(0),
@@ -68,7 +49,9 @@ export default function GamePanel() {
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(true),
     [ranking, setRanking] = useState<RankingEntry[]>([]),
-    [latestRank, setLatestRank] = useState<number | null>(null);
+    [latestRank, setLatestRank] = useState<number | null>(null),
+    [playerName, setPlayerName] = useState(''),
+    [registered, setRegistered] = useState(false);
   function tone(hit = false) {
     if (!sound.current) return;
     try {
@@ -98,8 +81,8 @@ export default function GamePanel() {
     keys.current.clear();
     held.current = 0;
     target.current = null;
-    recordedRun.current = false;
     setLatestRank(null);
+    setRegistered(false);
     setScore(0);
     setMode('playing');
     field.current?.focus();
@@ -144,7 +127,7 @@ export default function GamePanel() {
       caveImage.onerror =
         () => setAssetError(true);
     img.src = '/sprites.png';
-    hero.src = '/mermaid-back-handdrawn.png';
+    hero.src = '/mermaid-back-handdrawn-v2.png';
     rockImage.src = '/rock-handdrawn.png';
     caveImage.src = '/cave-course-rough.png';
     const down = (e: KeyboardEvent) => {
@@ -341,30 +324,25 @@ export default function GamePanel() {
     };
   }, []);
   useEffect(() => {
-    setRanking(readRanking());
+    setRanking(getRankings().slice(0, 5));
+    setPlayerName(getSavedPlayerName());
   }, []);
-  useEffect(() => {
-    if (mode !== 'over' || recordedRun.current) return;
-    recordedRun.current = true;
-    const entry: RankingEntry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      score,
-      playedAt: new Date().toISOString(),
-    };
-    const all = [...readRanking(), entry].sort(
-      (a, b) => b.score - a.score || a.playedAt.localeCompare(b.playedAt),
-    );
-    const position = all.findIndex((item) => item.id === entry.id) + 1;
-    const topFive = all.slice(0, 5);
+  function registerScore(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (registered || !playerName.trim()) return;
     try {
-      localStorage.setItem(RANKING_KEY, JSON.stringify(topFive));
-    } catch {}
-    setLatestRank(position <= 5 ? position : null);
-    setRanking(topFive);
-  }, [mode, score]);
+      const result = addRanking(playerName, score);
+      setLatestRank(result.rank);
+      setRanking(result.rankings.slice(0, 5));
+      setRegistered(true);
+    } catch {
+      setAssetError(true);
+    }
+  }
   useEffect(() => {
-    if (mode === 'over' || mode === 'paused') primary.current?.focus();
-  }, [mode]);
+    if (mode === 'over' && !registered) nameInput.current?.focus();
+    else if (mode === 'over' || mode === 'paused') primary.current?.focus();
+  }, [mode, registered]);
   function point(e: React.PointerEvent<HTMLDivElement>) {
     if (game.current.mode !== 'playing') return;
     const box = e.currentTarget.getBoundingClientRect();
@@ -479,11 +457,31 @@ export default function GamePanel() {
               <strong>{score}</strong>
               <span>pt</span>
             </div>
-            <p className="result-note">
-              しるこサンドを {score / 10} 個たべた！
-              <br />
-              {latestRank ? `今回の順位は ${latestRank} 位` : 'ランキング圏外'}
-            </p>
+            {registered ? (
+              <p className="result-note">
+                {playerName.trim()}さんは
+                {latestRank ? ` ${latestRank} 位！` : ' ランキング圏外'}
+              </p>
+            ) : (
+              <form className="score-entry" onSubmit={registerScore}>
+                <label htmlFor="player-name">ランキングに登録</label>
+                <div>
+                  <input
+                    ref={nameInput}
+                    id="player-name"
+                    value={playerName}
+                    onChange={(event) => setPlayerName(event.target.value)}
+                    maxLength={10}
+                    placeholder="なまえ"
+                    autoComplete="nickname"
+                    aria-label="ランキングに登録する名前"
+                  />
+                  <button type="submit" disabled={!playerName.trim()}>
+                    登録
+                  </button>
+                </div>
+              </form>
+            )}
             <button ref={primary} className="primary-button" onClick={start}>
               <RotateCcw size={18} />
               もういちど泳ぐ
@@ -533,7 +531,7 @@ export default function GamePanel() {
           <span>
             <Trophy size={15} /> 洞窟ランキング
           </span>
-          <small>このブラウザの記録</small>
+          <a href="/ranking">30位まで見る</a>
         </div>
         {ranking.length ? (
           <ol className="ranking-list">
@@ -545,6 +543,7 @@ export default function GamePanel() {
                   className={latestRank === index + 1 ? 'latest' : undefined}
                 >
                   <span>{index + 1}位</span>
+                  <b>{entry?.name ?? '—'}</b>
                   <strong>
                     {entry ? String(entry.score).padStart(4, '0') : '----'}
                   </strong>
