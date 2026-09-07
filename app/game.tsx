@@ -103,7 +103,7 @@ export default function GamePanel() {
     };
     img.onerror = hero.onerror = caveImage.onerror = () => setAssetError(true);
     img.src = '/sprites.png';
-    hero.src = '/mermaid-back-v3.svg';
+    hero.src = '/mermaid-back-handdrawn.png';
     caveImage.src = '/cave-course.png';
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
@@ -140,7 +140,7 @@ export default function GamePanel() {
     document.addEventListener('visibilitychange', visibility);
     let frame = 0,
       last = 0,
-      ambient = 0;
+      backgroundOffset = 0;
     const tick = (now: number) => {
       const dt = last ? Math.min((now - last) / 1000, 0.04) : 0;
       last = now;
@@ -165,16 +165,28 @@ export default function GamePanel() {
           setMode('over');
         }, 1050);
       }
-      if (g.mode === 'playing' || g.mode === 'ready') ambient += dt;
       const ctx = canvas.current?.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
-        const bgSpeed =
-          g.mode === 'playing' ? getScrollSpeed(g.time) * 0.38 : 25;
-        const bgOffset = (ambient * bgSpeed) % HEIGHT;
+        if (g.mode === 'playing') {
+          backgroundOffset =
+            (backgroundOffset + getScrollSpeed(g.time) * dt) % (HEIGHT * 2);
+        } else if (g.mode === 'ready') {
+          backgroundOffset = (backgroundOffset + 8 * dt) % (HEIGHT * 2);
+        }
         if (cave.current) {
-          ctx.drawImage(cave.current, 0, bgOffset - HEIGHT, WIDTH, HEIGHT);
-          ctx.drawImage(cave.current, 0, bgOffset, WIDTH, HEIGHT);
+          for (let tile = -2; tile <= 1; tile++) {
+            const y = tile * HEIGHT + backgroundOffset;
+            if (tile % 2 === 0) {
+              ctx.drawImage(cave.current, 0, y, WIDTH, HEIGHT);
+            } else {
+              ctx.save();
+              ctx.translate(0, y + HEIGHT);
+              ctx.scale(1, -1);
+              ctx.drawImage(cave.current, 0, 0, WIDTH, HEIGHT);
+              ctx.restore();
+            }
+          }
         }
         ctx.fillStyle = '#0718272c';
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -214,6 +226,16 @@ export default function GamePanel() {
           }
         } else {
           for (const i of g.items) {
+            if (i.kind === 'rock') {
+              ctx.save();
+              ctx.translate(i.x, i.y + i.size * 0.26);
+              ctx.scale(1, 0.34);
+              ctx.beginPath();
+              ctx.arc(0, 0, i.size * 0.36, 0, Math.PI * 2);
+              ctx.fillStyle = '#031c2b66';
+              ctx.fill();
+              ctx.restore();
+            }
             draw(i.kind === 'rock' ? 2 : 1, i.x, i.y, i.size, i.angle);
           }
           if (mermaid.current) {
