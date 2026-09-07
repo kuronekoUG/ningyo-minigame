@@ -517,7 +517,7 @@ canvas {
   width: 108px;
   height: 108px;
   margin: -10px auto 0;
-  background: url(/mermaid-back-v2.png) center / contain no-repeat;
+  background: url(/mermaid-back-v3.svg) center / contain no-repeat;
 }
 .with-sprite .tiny-caps {
   display: block;

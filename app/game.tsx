@@ -103,7 +103,7 @@ export default function GamePanel() {
     };
     img.onerror = hero.onerror = caveImage.onerror = () => setAssetError(true);
     img.src = '/sprites.png';
-    hero.src = '/mermaid-back-v2.png';
+    hero.src = '/mermaid-back-v3.svg';
     caveImage.src = '/cave-course.png';
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
