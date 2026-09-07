@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
-  title: '人魚のしるこサンドさんぽ',
+  title: 'しるこさんぽ',
   description:
     '岩をよけて、しるこサンドをぱくっ。洞窟を進む縦スクロールの非公式ファンゲーム。キーボードとスマホに対応。',
 };

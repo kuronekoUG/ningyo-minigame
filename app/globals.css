@@ -74,65 +74,8 @@ button:disabled {
   font-weight: 500;
 }
 .game-layout {
-  max-width: 1210px;
+  max-width: 490px;
   margin: 36px auto 22px;
-  display: grid;
-  grid-template-columns: 1fr minmax(340px, 490px) 0.48fr;
-  align-items: center;
-  gap: 42px;
-}
-.eyebrow {
-  font-size: 14px;
-  letter-spacing: 2px;
-  margin-bottom: 22px;
-}
-.intro h1 {
-  font-family: 'Hiragino Maru Gothic ProN', 'Yu Mincho', serif;
-  font-size: clamp(30px, 3.4vw, 48px);
-  line-height: 1.6;
-  letter-spacing: 3px;
-  margin: 0 0 20px;
-  font-weight: 900;
-}
-.intro h1 span {
-  font-size: 0.83em;
-  white-space: nowrap;
-}
-.intro > p {
-  font-size: 16px;
-  line-height: 2;
-  color: #a7c9cc;
-  margin: 0 0 33px;
-}
-.instruction {
-  display: flex;
-  gap: 14px;
-  margin: 24px 0;
-  align-items: flex-start;
-}
-.step {
-  border: 1px solid #99bec4;
-  border-radius: 50%;
-  width: 29px;
-  height: 29px;
-  display: grid;
-  place-items: center;
-  flex: none;
-  font-size: 12px;
-}
-.instruction b {
-  font-size: 16px;
-}
-.instruction p {
-  font-size: 14px;
-  line-height: 1.9;
-  color: #a7c9cc;
-  margin: 6px 0 0;
-}
-.small-note {
-  font-size: 12px;
-  color: #8fb8bf;
-  margin-top: 32px;
 }
 .game-shell {
   border: 2px solid #295568;
@@ -291,24 +234,6 @@ button:disabled {
   background: #35a498;
   margin-right: 8px;
 }
-.side-note {
-  align-self: center;
-  text-align: center;
-}
-.vertical-note {
-  writing-mode: vertical-rl;
-  text-align: left;
-  line-height: 2.2;
-  letter-spacing: 5px;
-  font-size: 20px;
-  font-family: 'Yu Mincho', serif;
-  margin: 0 auto 35px;
-}
-.side-note > span {
-  font-size: 12px;
-  line-height: 2.1;
-  color: #8fb8bf;
-}
 footer {
   text-align: center;
   font-size: 12px;
@@ -374,21 +299,19 @@ canvas {
   width: 100%;
   min-height: 45px;
   margin-bottom: 8px;
-  border: 2px solid #5f8d91;
+  border: 2px solid #172f3a;
   border-radius: 50px;
-  background: #e2f0ec;
-  color: #173f52;
+  background: #101010;
+  color: #fff;
   font-weight: 800;
 }
 .share-button:hover {
-  background: #edf8f4;
+  background: #303030;
 }
-.share-status {
-  display: block;
-  min-height: 20px;
-  margin-bottom: 6px;
-  color: #557581;
-  font-size: 12px;
+.x-mark {
+  font-family: Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
 }
 .over-card {
   background: #f4f6f4;
@@ -452,18 +375,6 @@ canvas {
     margin-top: 50px;
   }
 }
-@media (max-width: 1050px) {
-  .game-layout {
-    grid-template-columns: 1fr minmax(340px, 460px);
-    gap: 32px;
-  }
-  .side-note {
-    display: none;
-  }
-  .intro h1 {
-    font-size: 36px;
-  }
-}
 @media (max-width: 720px) {
   .ocean-page {
     padding: 0 15px;
@@ -480,12 +391,8 @@ canvas {
     font-size: 12px;
   }
   .game-layout {
-    display: block;
     margin: 16px auto;
     max-width: 450px;
-  }
-  .intro {
-    display: none;
   }
   .game-shell {
     border-radius: 22px;

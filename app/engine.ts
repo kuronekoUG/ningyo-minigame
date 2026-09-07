@@ -36,7 +36,17 @@ export function startGame(): Game {
 }
 
 export function getScrollSpeed(time: number) {
-  return 145 + Math.min(time * 7.2, 305);
+  const currentMaximum = 145 + Math.min(time * 7.2, 305);
+  const lateStage = Math.min(Math.max(time - 45, 0) * 4, 70);
+  const finalStage = Math.min(Math.max(time - 60, 0) * 5, 80);
+  return currentMaximum + lateStage + finalStage;
+}
+
+export function getSpawnInterval(time: number) {
+  const currentInterval = Math.max(0.68, 1.28 - time * 0.01);
+  const lateStage = Math.min(Math.max(time - 45, 0) * 0.01, 0.12);
+  const finalStage = Math.min(Math.max(time - 60, 0) * 0.01, 0.12);
+  return Math.max(0.44, currentInterval - lateStage - finalStage);
 }
 
 export function getRockCount(time: number) {
@@ -97,7 +107,7 @@ export function stepGame(
         angle: (random() - 0.5) * 0.3,
       });
     }
-    g.spawn = Math.max(0.68, 1.28 - g.time * 0.01);
+    g.spawn = getSpawnInterval(g.time);
   }
   let ate = false,
     hit = false;

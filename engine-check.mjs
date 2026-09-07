@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   getRockCount,
   getScrollSpeed,
+  getSpawnInterval,
   startGame,
   stepGame,
   PLAYER_Y,
@@ -36,6 +37,12 @@ stepGame(g, 0.016, 0, null, () => 0.5);
 assert.equal(g.items.length, 3);
 assert.notEqual(g.items[0].x, g.items[1].x);
 assert.ok(getScrollSpeed(45) > getScrollSpeed(5));
+assert.ok(getScrollSpeed(60) > getScrollSpeed(45));
+assert.ok(getScrollSpeed(80) > getScrollSpeed(60));
+assert.equal(getScrollSpeed(120), getScrollSpeed(80));
+assert.ok(getSpawnInterval(60) < getSpawnInterval(45));
+assert.ok(getSpawnInterval(80) < getSpawnInterval(60));
+assert.equal(getSpawnInterval(120), getSpawnInterval(80));
 assert.equal(getRockCount(0), 1);
 assert.equal(getRockCount(32), 2);
 assert.equal(getRockCount(60), 3);

@@ -5,7 +5,6 @@ import {
   Pause,
   Play,
   RotateCcw,
-  Share2,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -46,9 +45,6 @@ export default function GamePanel() {
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(true),
-    [shareStatus, setShareStatus] = useState<
-      'idle' | 'shared' | 'copied' | 'error'
-    >('idle'),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
   function tone(hit = false) {
     if (!sound.current) return;
@@ -79,7 +75,6 @@ export default function GamePanel() {
     keys.current.clear();
     held.current = 0;
     target.current = null;
-    setShareStatus('idle');
     setScore(0);
     setMode('playing');
     field.current?.focus();
@@ -326,30 +321,17 @@ export default function GamePanel() {
       void audio.current?.close();
     };
   }, []);
-  async function shareScore() {
-    const title = '人魚のしるこサンドさんぽ';
-    const text = `${title}で ${score}pt！\n岩をよけて、しるこサンドを集めよう。`;
-    const url = window.location.href;
-    setShareStatus('idle');
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, text, url });
-        setShareStatus('shared');
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-      }
-    }
-
-    try {
-      const shareText = `${text}\n${url}`;
-      if (!navigator.clipboard?.writeText) throw new Error('copy unavailable');
-      await navigator.clipboard.writeText(shareText);
-      setShareStatus('copied');
-    } catch {
-      setShareStatus('error');
-    }
+  function shareScoreOnX() {
+    const params = new URLSearchParams({
+      text: `しるこさんぽで ${score}pt！\n岩をよけて、しるこサンドを集めよう。`,
+      url: window.location.href,
+      hashtags: 'しるこさんぽ',
+    });
+    window.open(
+      `https://twitter.com/intent/tweet?${params.toString()}`,
+      '_blank',
+      'noopener,noreferrer,width=620,height=720',
+    );
   }
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
@@ -364,7 +346,7 @@ export default function GamePanel() {
     held.current = 0;
   };
   return (
-    <section className="game-shell" aria-label="人魚のしるこサンドさんぽ">
+    <section className="game-shell" aria-label="しるこさんぽ">
       <div className="hud">
         <div>
           <span>SCORE</span>
@@ -475,19 +457,12 @@ export default function GamePanel() {
               <strong>{score}</strong>
               <span>pt</span>
             </div>
-            <button className="share-button" onClick={shareScore}>
-              <Share2 size={18} />
-              スコアを共有
+            <button className="share-button" onClick={shareScoreOnX}>
+              <span className="x-mark" aria-hidden="true">
+                X
+              </span>
+              Xでスコアをポスト
             </button>
-            <output className="share-status" aria-live="polite">
-              {shareStatus === 'shared'
-                ? '共有しました。'
-                : shareStatus === 'copied'
-                  ? '結果とURLをコピーしました。'
-                  : shareStatus === 'error'
-                    ? '共有できませんでした。'
-                    : ''}
-            </output>
             <button
               ref={primary}
               className="primary-button"
