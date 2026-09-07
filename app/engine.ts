@@ -36,12 +36,12 @@ export function startGame(): Game {
 }
 
 export function getScrollSpeed(time: number) {
-  return 140 + Math.min(time * 4.2, 260);
+  return 145 + Math.min(time * 7.2, 305);
 }
 
 export function getRockCount(time: number) {
-  if (time < 22) return 1;
-  if (time < 50) return 2;
+  if (time < 14) return 1;
+  if (time < 34) return 2;
   return 3;
 }
 export function stepGame(
@@ -94,7 +94,7 @@ export function stepGame(
       size: 49,
       angle: (random() - 0.5) * 0.3,
     });
-    g.spawn = Math.max(0.78, 1.35 - g.time * 0.006);
+    g.spawn = Math.max(0.68, 1.28 - g.time * 0.01);
   }
   let ate = false,
     hit = false;

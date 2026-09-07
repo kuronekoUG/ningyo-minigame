@@ -5,6 +5,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Trophy,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -20,6 +21,31 @@ import {
   type Mode,
 } from './engine';
 
+type RankingEntry = {
+  id: string;
+  score: number;
+  playedAt: string;
+};
+
+const RANKING_KEY = 'shiruko-sand-swim-ranking-v1';
+
+function readRanking() {
+  try {
+    const value = JSON.parse(localStorage.getItem(RANKING_KEY) ?? '[]');
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter(
+        (entry): entry is RankingEntry =>
+          typeof entry?.id === 'string' &&
+          Number.isFinite(entry?.score) &&
+          typeof entry?.playedAt === 'string',
+      )
+      .slice(0, 5);
+  } catch {
+    return [];
+  }
+}
+
 export default function GamePanel() {
   const canvas = useRef<HTMLCanvasElement>(null),
     field = useRef<HTMLDivElement>(null),
@@ -29,16 +55,20 @@ export default function GamePanel() {
     held = useRef(0),
     sprite = useRef<HTMLImageElement | null>(null),
     mermaid = useRef<HTMLImageElement | null>(null),
+    rock = useRef<HTMLImageElement | null>(null),
     cave = useRef<HTMLImageElement | null>(null),
     sound = useRef(false),
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
+    recordedRun = useRef(false),
     primary = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>('ready'),
     [score, setScore] = useState(0),
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
-    [muted, setMuted] = useState(true);
+    [muted, setMuted] = useState(true),
+    [ranking, setRanking] = useState<RankingEntry[]>([]),
+    [latestRank, setLatestRank] = useState<number | null>(null);
   function tone(hit = false) {
     if (!sound.current) return;
     try {
@@ -68,6 +98,8 @@ export default function GamePanel() {
     keys.current.clear();
     held.current = 0;
     target.current = null;
+    recordedRun.current = false;
+    setLatestRank(null);
     setScore(0);
     setMode('playing');
     field.current?.focus();
@@ -89,22 +121,32 @@ export default function GamePanel() {
   useEffect(() => {
     const img = new Image();
     const hero = new Image();
+    const rockImage = new Image();
     const caveImage = new Image();
     img.onload = () => {
       sprite.current = img;
-      if (mermaid.current) setLoaded(true);
+      if (mermaid.current && rock.current) setLoaded(true);
     };
     hero.onload = () => {
       mermaid.current = hero;
-      if (sprite.current) setLoaded(true);
+      if (sprite.current && rock.current) setLoaded(true);
+    };
+    rockImage.onload = () => {
+      rock.current = rockImage;
+      if (sprite.current && mermaid.current) setLoaded(true);
     };
     caveImage.onload = () => {
       cave.current = caveImage;
     };
-    img.onerror = hero.onerror = caveImage.onerror = () => setAssetError(true);
+    img.onerror =
+      hero.onerror =
+      rockImage.onerror =
+      caveImage.onerror =
+        () => setAssetError(true);
     img.src = '/sprites.png';
     hero.src = '/mermaid-back-handdrawn.png';
-    caveImage.src = '/cave-course.png';
+    rockImage.src = '/rock-handdrawn.png';
+    caveImage.src = '/cave-course-rough.png';
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -216,9 +258,24 @@ export default function GamePanel() {
           );
           ctx.restore();
         };
+        const drawRock = (
+          x: number,
+          y: number,
+          size: number,
+          angle = 0,
+          alpha = 1,
+        ) => {
+          if (!rock.current) return;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(x, y);
+          ctx.rotate(angle);
+          ctx.drawImage(rock.current, -size / 2, -size / 2, size, size);
+          ctx.restore();
+        };
         if (g.mode === 'ready') {
-          draw(2, 65, 85, 107, 0.1, 0.7);
-          draw(2, 423, 368, 95, -0.15, 0.65);
+          drawRock(65, 85, 107, 0.1, 0.7);
+          drawRock(423, 368, 95, -0.15, 0.65);
           draw(1, 350, 95, 60, 0.2);
           draw(1, 95, 430, 51, -0.2);
           if (mermaid.current) {
@@ -236,7 +293,11 @@ export default function GamePanel() {
               ctx.fill();
               ctx.restore();
             }
-            draw(i.kind === 'rock' ? 2 : 1, i.x, i.y, i.size, i.angle);
+            if (i.kind === 'rock') {
+              drawRock(i.x, i.y, i.size, i.angle);
+            } else {
+              draw(1, i.x, i.y, i.size, i.angle);
+            }
           }
           if (mermaid.current) {
             ctx.save();
@@ -272,11 +333,35 @@ export default function GamePanel() {
       img.onerror = null;
       hero.onload = null;
       hero.onerror = null;
+      rockImage.onload = null;
+      rockImage.onerror = null;
       caveImage.onload = null;
       caveImage.onerror = null;
       void audio.current?.close();
     };
   }, []);
+  useEffect(() => {
+    setRanking(readRanking());
+  }, []);
+  useEffect(() => {
+    if (mode !== 'over' || recordedRun.current) return;
+    recordedRun.current = true;
+    const entry: RankingEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      score,
+      playedAt: new Date().toISOString(),
+    };
+    const all = [...readRanking(), entry].sort(
+      (a, b) => b.score - a.score || a.playedAt.localeCompare(b.playedAt),
+    );
+    const position = all.findIndex((item) => item.id === entry.id) + 1;
+    const topFive = all.slice(0, 5);
+    try {
+      localStorage.setItem(RANKING_KEY, JSON.stringify(topFive));
+    } catch {}
+    setLatestRank(position <= 5 ? position : null);
+    setRanking(topFive);
+  }, [mode, score]);
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
   }, [mode]);
@@ -390,12 +475,15 @@ export default function GamePanel() {
           <div className="start-card over-card">
             <span className="tiny-caps">GAME OVER</span>
             <h2>……みつかっちゃった。</h2>
-            <p>暗いところで、なにかが動いた。</p>
             <div className="score-result">
               <strong>{score}</strong>
               <span>pt</span>
             </div>
-            <p>しるこサンドを {score / 10} 個たべた！</p>
+            <p className="result-note">
+              しるこサンドを {score / 10} 個たべた！
+              <br />
+              {latestRank ? `今回の順位は ${latestRank} 位` : 'ランキング圏外'}
+            </p>
             <button ref={primary} className="primary-button" onClick={start}>
               <RotateCcw size={18} />
               もういちど泳ぐ
@@ -437,6 +525,38 @@ export default function GamePanel() {
         </span>
         <span>{mode === 'playing' ? '← → / なぞって移動' : '岩に注意！'}</span>
       </div>
+      <section
+        className="ranking-board"
+        aria-label="このブラウザのスコアランキング"
+      >
+        <div className="ranking-heading">
+          <span>
+            <Trophy size={15} /> 洞窟ランキング
+          </span>
+          <small>このブラウザの記録</small>
+        </div>
+        {ranking.length ? (
+          <ol className="ranking-list">
+            {Array.from({ length: 5 }, (_, index) => {
+              const entry = ranking[index];
+              return (
+                <li
+                  key={entry?.id ?? `empty-${index}`}
+                  className={latestRank === index + 1 ? 'latest' : undefined}
+                >
+                  <span>{index + 1}位</span>
+                  <strong>
+                    {entry ? String(entry.score).padStart(4, '0') : '----'}
+                  </strong>
+                  <small>pt</small>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <p className="ranking-empty">最初の記録をつくろう。</p>
+        )}
+      </section>
       <output className="sr-only" aria-live="polite">
         {mode === 'over'
           ? `ゲームオーバー。${score}点。`

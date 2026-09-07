@@ -283,6 +283,83 @@ button:disabled {
   font-size: 12px;
   border-top: 2px solid #295568;
 }
+.ranking-board {
+  padding: 11px 16px 14px;
+  border-top: 1px dashed #9cb9b7;
+  background: #f4eedb;
+}
+.ranking-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ranking-heading > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.ranking-heading small {
+  color: #68828a;
+  font-size: 10px;
+}
+.ranking-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ranking-list li {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: 3px;
+  min-width: 0;
+  padding: 6px 3px 7px;
+  border: 1px solid #b7c9c6;
+  border-radius: 8px 11px 7px 10px;
+  background: #fffaf0;
+}
+.ranking-list li > span {
+  grid-column: 1 / -1;
+  color: #58727b;
+  font-size: 10px;
+}
+.ranking-list strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+.ranking-list small {
+  font-size: 9px;
+}
+.ranking-list li.latest {
+  border-color: #e26a61;
+  background: #fff1df;
+  box-shadow: 2px 2px 0 #e8b994;
+}
+.ranking-list li.latest > span::after {
+  content: ' 今回';
+  color: #c4504d;
+  font-weight: 800;
+}
+.ranking-empty {
+  margin: 0;
+  padding: 8px;
+  border: 1px dashed #b7c9c6;
+  border-radius: 8px;
+  color: #58727b;
+  text-align: center;
+  font-size: 12px;
+}
 .live-dot {
   display: inline-block;
   width: 6px;
@@ -357,6 +434,10 @@ canvas {
 }
 .score-result strong {
   font-size: 45px;
+}
+.over-card .result-note {
+  margin-bottom: 18px;
+  line-height: 1.7;
 }
 .over-card {
   background: #f4f6f4;
