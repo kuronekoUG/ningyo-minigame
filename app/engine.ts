@@ -1,6 +1,12 @@
 export const WIDTH = 480;
 export const HEIGHT = 640;
 export const PLAYER_Y = 524;
+export const LANE_COUNT = 5;
+// A chain survives this long between snacks, so dodging never kills it outright.
+export const COMBO_WINDOW = 2.5;
+export const MAX_MULTIPLIER = 5;
+export const FEVER_COMBO = 16;
+export const FEVER_DURATION = 4;
 export type Mode = 'ready' | 'playing' | 'paused' | 'crashed' | 'over';
 export type Item = {
   kind: 'rock' | 'snack';
@@ -9,6 +15,7 @@ export type Item = {
   size: number;
   angle: number;
 };
+export type Pop = { x: number; y: number; life: number; text: string };
 export type Game = {
   mode: Mode;
   x: number;
@@ -16,8 +23,25 @@ export type Game = {
   time: number;
   spawn: number;
   items: Item[];
-  pops: { x: number; y: number; life: number }[];
+  pops: Pop[];
   eaten: number;
+  combo: number;
+  comboTimer: number;
+  fever: number;
+};
+export type Step = {
+  ate: boolean;
+  hit: boolean;
+  feverStarted: boolean;
+  feverEnded: boolean;
+  comboLost: boolean;
+};
+const IDLE: Step = {
+  ate: false,
+  hit: false,
+  feverStarted: false,
+  feverEnded: false,
+  comboLost: false,
 };
 export function newGame(): Game {
   return {
@@ -29,6 +53,9 @@ export function newGame(): Game {
     items: [],
     pops: [],
     eaten: 0,
+    combo: 0,
+    comboTimer: 0,
+    fever: 0,
   };
 }
 export function startGame(): Game {
@@ -54,16 +81,45 @@ export function getRockCount(time: number) {
   if (time < 34) return 2;
   return 3;
 }
+// Snacks fill every lane the rocks left free, so early runs stay generous.
+export function getSnackCount(time: number) {
+  return LANE_COUNT - getRockCount(time);
+}
+// Every fourth snack in a chain is worth another multiple, up to five.
+export function getMultiplier(combo: number) {
+  return Math.min(MAX_MULTIPLIER, 1 + Math.floor(combo / 4));
+}
 export function stepGame(
   g: Game,
   dt: number,
   direction: number,
   target: number | null,
   random = Math.random,
-) {
-  if (g.mode !== 'playing') return { ate: false, hit: false };
+): Step {
+  if (g.mode !== 'playing') return { ...IDLE };
   dt = Math.min(Math.max(dt, 0), 0.04);
   g.time += dt;
+  let feverStarted = false,
+    feverEnded = false,
+    comboLost = false;
+  if (g.fever > 0) {
+    g.fever = Math.max(0, g.fever - dt);
+    // The chain is spent on the reward, so the next one starts from scratch.
+    if (g.fever === 0) {
+      // Faded rocks must not turn lethal under the player the instant it ends.
+      g.items = g.items.filter((i) => i.kind !== 'rock');
+      g.combo = 0;
+      g.comboTimer = 0;
+      feverEnded = true;
+    }
+  } else if (g.combo > 0) {
+    g.comboTimer -= dt;
+    if (g.comboTimer <= 0) {
+      g.combo = 0;
+      g.comboTimer = 0;
+      comboLost = true;
+    }
+  }
   const move = 350 * dt;
   g.x = Math.max(
     36,
@@ -78,6 +134,7 @@ export function stepGame(
     ),
   );
   const speed = getScrollSpeed(g.time);
+  const inFever = g.fever > 0;
   g.spawn -= dt;
   if (g.spawn <= 0) {
     // More rocks appear later, but they are staggered so they never form a wall.
@@ -86,7 +143,8 @@ export function stepGame(
       const j = Math.floor(random() * (i + 1));
       [lanes[i], lanes[j]] = [lanes[j], lanes[i]];
     }
-    const rockCount = getRockCount(g.time);
+    // サクサクタイム holds the rocks back and hands every lane to the snacks.
+    const rockCount = inFever ? 0 : getRockCount(g.time);
     for (const [index, lane] of lanes.slice(0, rockCount).entries()) {
       g.items.push({
         kind: 'rock',
@@ -96,9 +154,7 @@ export function stepGame(
         angle: (random() - 0.5) * 0.45,
       });
     }
-    for (const [index, snackLane] of lanes
-      .slice(rockCount, rockCount + 2)
-      .entries()) {
+    for (const [index, snackLane] of lanes.slice(rockCount).entries()) {
       g.items.push({
         kind: 'snack',
         x: 48 + snackLane * 96,
@@ -107,7 +163,7 @@ export function stepGame(
         angle: (random() - 0.5) * 0.3,
       });
     }
-    g.spawn = getSpawnInterval(g.time);
+    g.spawn = getSpawnInterval(g.time) * (inFever ? 0.55 : 1);
   }
   let ate = false,
     hit = false;
@@ -120,15 +176,23 @@ export function stepGame(
     const ry = item.kind === 'rock' ? item.size * 0.29 + 21 : 39;
     if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) < 1) {
       if (item.kind === 'rock') {
+        if (inFever) continue;
         g.mode = 'crashed';
         hit = true;
         break;
       }
-      g.score += 10;
+      g.combo++;
+      g.comboTimer = COMBO_WINDOW;
+      const gained = 10 * (inFever ? MAX_MULTIPLIER : getMultiplier(g.combo));
+      g.score += gained;
       g.eaten++;
-      g.pops.push({ x: item.x, y: item.y, life: 1 });
+      g.pops.push({ x: item.x, y: item.y, life: 1, text: `+${gained}` });
       item.y = 900;
       ate = true;
+      if (!inFever && g.combo >= FEVER_COMBO) {
+        g.fever = FEVER_DURATION;
+        feverStarted = true;
+      }
     }
   }
   g.items = g.items.filter((i) => i.y < HEIGHT + 90);
@@ -137,5 +201,5 @@ export function stepGame(
     p.y -= 35 * dt;
   }
   g.pops = g.pops.filter((p) => p.life > 0);
-  return { ate, hit };
+  return { ate, hit, feverStarted, feverEnded, comboLost };
 }

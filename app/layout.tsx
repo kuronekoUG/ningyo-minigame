@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { BASE_PATH } from './base-path';
 
 const SITE_ORIGIN = 'https://kuronekoug.github.io';
-const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 // Pages serves the game under a base path, so card URLs are built by hand.
 const SITE_URL = `${SITE_ORIGIN}${BASE_PATH}/`;
 const OG_IMAGE = `${SITE_ORIGIN}${BASE_PATH}/og.jpg`;

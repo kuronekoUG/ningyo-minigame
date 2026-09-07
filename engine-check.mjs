@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   getRockCount,
+  getSnackCount,
   getScrollSpeed,
   getSpawnInterval,
   startGame,
@@ -34,7 +35,7 @@ assert.equal(g.x, 444);
 g = startGame();
 g.spawn = 0;
 stepGame(g, 0.016, 0, null, () => 0.5);
-assert.equal(g.items.length, 3);
+assert.equal(g.items.length, 5);
 assert.notEqual(g.items[0].x, g.items[1].x);
 assert.ok(getScrollSpeed(45) > getScrollSpeed(5));
 assert.ok(getScrollSpeed(60) > getScrollSpeed(45));
@@ -46,6 +47,9 @@ assert.equal(getSpawnInterval(120), getSpawnInterval(80));
 assert.equal(getRockCount(0), 1);
 assert.equal(getRockCount(32), 2);
 assert.equal(getRockCount(60), 3);
+assert.equal(getSnackCount(0), 4);
+assert.equal(getSnackCount(32), 3);
+assert.equal(getSnackCount(60), 2);
 g = startGame();
 g.time = 60;
 g.spawn = 0;
@@ -67,4 +71,91 @@ assert.ok(g.items[0].y > y);
 assert.equal(startGame().score, 0);
 console.log(
   'PASS: collection, collision, pause, bounds, speed increase, rock-count increase, clear lane, scroll, restart.',
+);
+
+// combo multiplier and サクサクタイム
+{
+  const {
+    getMultiplier,
+    COMBO_WINDOW,
+    FEVER_COMBO,
+    FEVER_DURATION,
+    MAX_MULTIPLIER,
+  } = await import('./app/engine.ts');
+  assert.equal(getMultiplier(0), 1);
+  assert.equal(getMultiplier(3), 1);
+  assert.equal(getMultiplier(4), 2);
+  assert.equal(getMultiplier(8), 3);
+  assert.equal(getMultiplier(99), MAX_MULTIPLIER);
+
+  const eat = (game) => {
+    game.items = [
+      { kind: 'snack', x: game.x, y: PLAYER_Y, size: 49, angle: 0 },
+    ];
+    return stepGame(game, 0.016, 0, null);
+  };
+
+  // a chain raises the multiplier, so the fourth snack pays double
+  let c = startGame();
+  c.spawn = 99;
+  for (let i = 0; i < 3; i++) eat(c);
+  assert.equal(c.score, 30);
+  assert.equal(c.combo, 3);
+  eat(c);
+  assert.equal(c.score, 50);
+
+  // the chain lapses after the window, and only then
+  c = startGame();
+  c.spawn = 99;
+  eat(c);
+  for (let t = 0; t < COMBO_WINDOW - 0.2; t += 0.04) stepGame(c, 0.04, 0, null);
+  assert.equal(c.combo, 1);
+  let lapsed = false;
+  for (let t = 0; t < 0.5; t += 0.04) {
+    lapsed = lapsed || stepGame(c, 0.04, 0, null).comboLost;
+  }
+  assert.equal(lapsed, true);
+  assert.equal(c.combo, 0);
+
+  // a long enough chain opens サクサクタイム
+  c = startGame();
+  c.spawn = 99;
+  let started = false;
+  for (let i = 0; i < FEVER_COMBO; i++)
+    started = started || eat(c).feverStarted;
+  assert.equal(started, true);
+  assert.ok(c.fever > 0);
+
+  // rocks stop spawning and stop hurting while it lasts
+  c.spawn = 0;
+  c.items = [];
+  stepGame(c, 0.016, 0, null, () => 0.5);
+  assert.equal(c.items.filter((i) => i.kind === 'rock').length, 0);
+  assert.equal(c.items.filter((i) => i.kind === 'snack').length, 5);
+  c.items = [{ kind: 'rock', x: c.x, y: PLAYER_Y, size: 85, angle: 0 }];
+  assert.equal(stepGame(c, 0.016, 0, null).hit, false);
+  assert.equal(c.mode, 'playing');
+
+  // every snack pays the top rate during it
+  const before = c.score;
+  eat(c);
+  assert.equal(c.score - before, 10 * MAX_MULTIPLIER);
+
+  // leftover rocks are swept away rather than turning lethal on the spot
+  c.items.push({ kind: 'rock', x: c.x, y: PLAYER_Y - 10, size: 85, angle: 0 });
+  let ended = false;
+  for (let t = 0; t < FEVER_DURATION + 0.2; t += 0.04) {
+    ended = ended || stepGame(c, 0.04, 0, null).feverEnded;
+  }
+  assert.equal(ended, true);
+  assert.equal(c.fever, 0);
+  assert.equal(c.combo, 0);
+  assert.equal(c.items.filter((i) => i.kind === 'rock').length, 0);
+
+  // and rocks are lethal again once it is over
+  c.items = [{ kind: 'rock', x: c.x, y: PLAYER_Y, size: 85, angle: 0 }];
+  assert.equal(stepGame(c, 0.016, 0, null).hit, true);
+}
+console.log(
+  'PASS: combo multiplier, chain lapse, サクサクタイム start/effects/end.',
 );

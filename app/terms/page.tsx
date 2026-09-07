@@ -1,0 +1,96 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { withBase } from '../base-path';
+
+export const metadata: Metadata = {
+  title: 'このゲームについて | しるこさんぽ',
+  description:
+    '「しるこさんぽ」の権利表記・運営方針・免責事項・プライバシーについて。',
+};
+
+export default function Terms() {
+  return (
+    <main className="doc-page">
+      <article>
+        <p className="doc-eyebrow">ABOUT THIS FAN GAME</p>
+        <h1>このゲームについて</h1>
+        <p className="doc-lead">
+          「しるこさんぽ」は、個人が趣味で制作した非公式のファンゲームです。
+          原作および商品の権利者とは一切関係がありません。
+        </p>
+
+        <h2>権利について</h2>
+        <ul>
+          <li>
+            『ちいかわ』に関する著作権その他一切の権利は、原作者のナガノ先生、
+            株式会社講談社をはじめとする権利者の皆様に帰属します。
+          </li>
+          <li>「しるこサンド」は松永製菓株式会社の商品名および商標です。</li>
+          <li>
+            本ゲームは上記いずれの権利者からも、許諾・監修・提携・後援を
+            受けたものではありません。
+          </li>
+          <li>
+            本ゲームに含まれる画像・文章・プログラムは、上記の作品や商品を
+            題材として制作したオリジナルの二次創作物です。
+          </li>
+        </ul>
+
+        <h2>運営方針</h2>
+        <ul>
+          <li>
+            非営利で運営しています。広告・課金・投げ銭はなく、本ゲームによる
+            収益は一切得ていません。
+          </li>
+          <li>
+            権利者の皆様から公開の停止や修正のご連絡をいただいた場合は、
+            速やかに対応します。
+          </li>
+          <li>原作および商品のイメージを損なう利用はいたしません。</li>
+          <li>予告なく内容の変更や公開の停止を行う場合があります。</li>
+        </ul>
+
+        <h2>プライバシー</h2>
+        <ul>
+          <li>
+            本ゲームはブラウザの中だけで動作します。スコアや個人情報を
+            サーバーへ送信・保存することはありません。
+          </li>
+          <li>
+            GitHub Pagesでホスティングしているため、アクセスに伴い
+            GitHub社側でログが記録される場合があります。
+          </li>
+          <li>
+            「Xでスコアをポスト」はXの投稿画面を開くだけの機能です。
+            押さなければ何も送信されません。
+          </li>
+        </ul>
+
+        <h2>免責事項</h2>
+        <ul>
+          <li>本ゲームは現状有姿で提供され、動作や内容を保証しません。</li>
+          <li>
+            本ゲームの利用によって生じた損害について、制作者は責任を負いません。
+          </li>
+        </ul>
+
+        <h2>お問い合わせ</h2>
+        <p>
+          ご連絡は
+          <a
+            href="https://github.com/kuronekoUG/shiruko-walk/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHubのIssue
+          </a>
+          へお願いします。
+        </p>
+
+        <p className="doc-back">
+          <Link href={withBase('/')}>← ゲームにもどる</Link>
+        </p>
+      </article>
+    </main>
+  );
+}

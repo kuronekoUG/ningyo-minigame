@@ -15,14 +15,17 @@ import {
   startGame,
   stepGame,
   getScrollSpeed,
+  getMultiplier,
+  COMBO_WINDOW,
+  MAX_MULTIPLIER,
   WIDTH,
   HEIGHT,
   PLAYER_Y,
   type Mode,
 } from './engine';
 import { GAME_OVER_LINES } from './game-over-lines';
+import { withBase } from './base-path';
 
-const ASSET_BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 // Sprite sheet holds three square cells side by side.
 const SPRITE_CELL = 192;
 
@@ -47,8 +50,13 @@ export default function GamePanel() {
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(true),
+    [combo, setCombo] = useState(0),
+    [multiplier, setMultiplier] = useState(1),
+    [fever, setFever] = useState(false),
+    // Bumping this per snack restarts the chain bar's CSS countdown.
+    [chain, setChain] = useState(0),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
-  function tone(hit = false) {
+  function tone(kind: 'snack' | 'hit' | 'fever' = 'snack', step = 0) {
     if (!sound.current) return;
     try {
       audio.current ??= new AudioContext();
@@ -56,18 +64,25 @@ export default function GamePanel() {
       const a = audio.current,
         osc = a.createOscillator(),
         gain = a.createGain();
-      osc.type = hit ? 'triangle' : 'sine';
-      osc.frequency.setValueAtTime(hit ? 110 : 720, a.currentTime);
+      // The chain climbs in pitch, so a long one is audible as well as visible.
+      const from =
+        kind === 'hit' ? 110 : kind === 'fever' ? 520 : 660 + step * 95;
+      const to =
+        kind === 'hit' ? 30 : kind === 'fever' ? 1560 : 1080 + step * 150;
+      const length = kind === 'fever' ? 0.42 : 0.22;
+      osc.type =
+        kind === 'hit' ? 'triangle' : kind === 'fever' ? 'square' : 'sine';
+      osc.frequency.setValueAtTime(from, a.currentTime);
       osc.frequency.exponentialRampToValueAtTime(
-        hit ? 30 : 1150,
-        a.currentTime + 0.13,
+        to,
+        a.currentTime + length * 0.6,
       );
-      gain.gain.setValueAtTime(0.085, a.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.22);
+      gain.gain.setValueAtTime(kind === 'fever' ? 0.06 : 0.085, a.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + length);
       osc.connect(gain);
       gain.connect(a.destination);
       osc.start();
-      osc.stop(a.currentTime + 0.23);
+      osc.stop(a.currentTime + length + 0.01);
     } catch {}
   }
   function start() {
@@ -78,6 +93,9 @@ export default function GamePanel() {
     held.current = 0;
     target.current = null;
     setScore(0);
+    setCombo(0);
+    setMultiplier(1);
+    setFever(false);
     setMode('playing');
     field.current?.focus();
   }
@@ -120,10 +138,10 @@ export default function GamePanel() {
       rockImage.onerror =
       caveImage.onerror =
         () => setAssetError(true);
-    img.src = `${ASSET_BASE}/sprites.png`;
-    hero.src = `${ASSET_BASE}/mermaid-back-handdrawn-v3.png`;
-    rockImage.src = `${ASSET_BASE}/rock-handdrawn.png`;
-    caveImage.src = `${ASSET_BASE}/cave-course-rough.jpg`;
+    img.src = withBase('/sprites.png');
+    hero.src = withBase('/mermaid-back-handdrawn-v3.png');
+    rockImage.src = withBase('/rock-handdrawn.png');
+    caveImage.src = withBase('/cave-course-rough.jpg');
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -170,11 +188,28 @@ export default function GamePanel() {
         held.current;
       const result = stepGame(g, dt, direction, target.current);
       if (result.ate) {
+        const step = g.fever > 0 ? MAX_MULTIPLIER : getMultiplier(g.combo);
         setScore(g.score);
-        tone();
+        setCombo(g.combo);
+        setMultiplier(step);
+        setChain((n) => n + 1);
+        tone('snack', step - 1);
+      }
+      if (result.feverStarted) {
+        setFever(true);
+        tone('fever');
+      }
+      if (result.feverEnded) {
+        setFever(false);
+        setCombo(0);
+        setMultiplier(1);
+      }
+      if (result.comboLost) {
+        setCombo(0);
+        setMultiplier(1);
       }
       if (result.hit) {
-        tone(true);
+        tone('hit');
         let lineIndex = Math.floor(Math.random() * GAME_OVER_LINES.length);
         if (lineIndex === lastGameOverLine.current) {
           lineIndex = (lineIndex + 1) % GAME_OVER_LINES.length;
@@ -213,7 +248,8 @@ export default function GamePanel() {
             }
           }
         }
-        ctx.fillStyle = '#0718272c';
+        // サクサクタイム warms the cave instead of darkening it.
+        ctx.fillStyle = g.fever > 0 ? '#f7b04724' : '#0718272c';
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
         const draw = (
           cell: number,
@@ -265,8 +301,9 @@ export default function GamePanel() {
             ctx.drawImage(mermaid.current, 188, 491, 104, 104);
           }
         } else {
+          const rockAlpha = g.fever > 0 ? 0.28 : 1;
           for (const i of g.items) {
-            if (i.kind === 'rock') {
+            if (i.kind === 'rock' && g.fever === 0) {
               ctx.save();
               ctx.translate(i.x, i.y + i.size * 0.26);
               ctx.scale(1, 0.34);
@@ -277,7 +314,7 @@ export default function GamePanel() {
               ctx.restore();
             }
             if (i.kind === 'rock') {
-              drawRock(i.x, i.y, i.size, i.angle);
+              drawRock(i.x, i.y, i.size, i.angle, rockAlpha);
             } else {
               draw(1, i.x, i.y, i.size, i.angle);
             }
@@ -296,9 +333,24 @@ export default function GamePanel() {
             ctx.lineWidth = 3;
             ctx.font = 'bold 23px sans-serif';
             ctx.textAlign = 'center';
-            ctx.strokeText('+10', p.x, p.y - 27);
-            ctx.fillText('+10', p.x, p.y - 27);
+            ctx.strokeText(p.text, p.x, p.y - 27);
+            ctx.fillText(p.text, p.x, p.y - 27);
             ctx.globalAlpha = 1;
+          }
+          if (g.fever > 0) {
+            // Banner fades out over the last half second so the end is legible.
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, g.fever * 2);
+            ctx.translate(WIDTH / 2, 104);
+            ctx.scale(1 + Math.sin(g.time * 12) * 0.035, 1);
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 40px sans-serif';
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#5a2f10';
+            ctx.strokeText('サクサクタイム！', 0, 0);
+            ctx.fillStyle = '#ffe9a8';
+            ctx.fillText('サクサクタイム！', 0, 0);
+            ctx.restore();
           }
         }
       }
@@ -356,13 +408,25 @@ export default function GamePanel() {
             {String(score).padStart(4, '0')} <small>pt</small>
           </strong>
         </div>
+        {(combo > 0 || fever) && (
+          <div className={`combo-meter${fever ? ' fever' : ''}`}>
+            <strong>×{multiplier}</strong>
+            <div className="combo-track">
+              <i
+                key={fever ? 'fever' : chain}
+                style={{ animationDuration: `${COMBO_WINDOW}s` }}
+              />
+            </div>
+            <span>{fever ? 'サクサクタイム！' : `${combo} れんぞく`}</span>
+          </div>
+        )}
         <div className="hud-right">
           <button
             className="icon-button"
             onClick={() => {
               sound.current = !sound.current;
               setMuted(!sound.current);
-              if (sound.current) tone();
+              if (sound.current) tone('snack');
             }}
             aria-label={muted ? '音をオンにする' : '音をオフにする'}
             aria-pressed={!muted}
@@ -407,7 +471,7 @@ export default function GamePanel() {
           <div className="start-card with-sprite">
             <NextImage
               className="sprite-preview"
-              src={`${ASSET_BASE}/mermaid-back-handdrawn-v3.png`}
+              src={withBase('/mermaid-back-handdrawn-v3.png')}
               alt=""
               width={108}
               height={108}
