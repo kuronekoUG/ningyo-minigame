@@ -62,7 +62,7 @@ export default function GamePanel() {
     } catch {}
   }
   function start() {
-    if (!sprite.current) return;
+    if (!sprite.current || !mermaid.current) return;
     if (overTimer.current) clearTimeout(overTimer.current);
     game.current = startGame();
     keys.current.clear();
@@ -87,25 +87,19 @@ export default function GamePanel() {
     }
   }
   useEffect(() => {
-    let assetsReady = 0;
-    const ready = () => {
-      assetsReady += 1;
-      if (assetsReady === 3) setLoaded(true);
-    };
     const img = new Image();
     const hero = new Image();
     const caveImage = new Image();
     img.onload = () => {
       sprite.current = img;
-      ready();
+      if (mermaid.current) setLoaded(true);
     };
     hero.onload = () => {
       mermaid.current = hero;
-      ready();
+      if (sprite.current) setLoaded(true);
     };
     caveImage.onload = () => {
       cave.current = caveImage;
-      ready();
     };
     img.onerror = hero.onerror = caveImage.onerror = () => setAssetError(true);
     img.src = '/sprites.png';
