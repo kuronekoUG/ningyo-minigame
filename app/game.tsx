@@ -103,7 +103,7 @@ export default function GamePanel() {
     };
     img.onerror = hero.onerror = caveImage.onerror = () => setAssetError(true);
     img.src = '/sprites.png';
-    hero.src = '/mermaid-back.png';
+    hero.src = '/mermaid-back-v2.png';
     caveImage.src = '/cave-course.png';
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
@@ -210,7 +210,7 @@ export default function GamePanel() {
           draw(1, 350, 95, 60, 0.2);
           draw(1, 95, 430, 51, -0.2);
           if (mermaid.current) {
-            ctx.drawImage(mermaid.current, 190, 493, 100, 100);
+            ctx.drawImage(mermaid.current, 188, 491, 104, 104);
           }
         } else {
           for (const i of g.items) {
@@ -220,7 +220,7 @@ export default function GamePanel() {
             ctx.save();
             ctx.translate(g.x, PLAYER_Y);
             ctx.rotate(g.mode === 'playing' ? Math.sin(g.time * 7) * 0.055 : 0);
-            ctx.drawImage(mermaid.current, -45, -52, 90, 104);
+            ctx.drawImage(mermaid.current, -48, -48, 96, 96);
             ctx.restore();
           }
           for (const p of g.pops) {
