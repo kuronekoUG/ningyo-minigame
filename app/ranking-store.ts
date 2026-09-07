@@ -5,63 +5,47 @@ export type RankingEntry = {
   playedAt: string;
 };
 
-const RANKING_KEY = 'shiruko-sand-swim-ranking-v1';
+type RankingResponse = {
+  rankings: RankingEntry[];
+  rank?: number | null;
+  error?: string;
+};
+
 const PLAYER_NAME_KEY = 'shiruko-sand-swim-player-name';
 
-export function getRankings(): RankingEntry[] {
-  try {
-    const value: unknown = JSON.parse(
-      localStorage.getItem(RANKING_KEY) ?? '[]',
-    );
-    if (!Array.isArray(value)) return [];
-    return value
-      .flatMap((entry): RankingEntry[] => {
-        if (!entry || typeof entry !== 'object') return [];
-        const candidate = entry as Partial<RankingEntry>;
-        if (
-          typeof candidate.id !== 'string' ||
-          !Number.isFinite(candidate.score) ||
-          typeof candidate.playedAt !== 'string'
-        ) {
-          return [];
-        }
-        return [
-          {
-            id: candidate.id,
-            name:
-              typeof candidate.name === 'string' && candidate.name.trim()
-                ? candidate.name.trim().slice(0, 10)
-                : 'ななし',
-            score: Number(candidate.score),
-            playedAt: candidate.playedAt,
-          },
-        ];
-      })
-      .sort((a, b) => b.score - a.score || a.playedAt.localeCompare(b.playedAt))
-      .slice(0, 30);
-  } catch {
-    return [];
+async function readResponse(response: Response) {
+  const body = (await response.json()) as RankingResponse;
+  if (!response.ok) {
+    throw new Error(body.error ?? 'ランキングの通信に失敗しました。');
   }
+  return body;
 }
 
-export function addRanking(name: string, score: number) {
-  const cleanName = name.trim().slice(0, 10);
-  const entry: RankingEntry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    name: cleanName,
-    score,
-    playedAt: new Date().toISOString(),
-  };
-  const all = [...getRankings(), entry].sort(
-    (a, b) => b.score - a.score || a.playedAt.localeCompare(b.playedAt),
-  );
-  const position = all.findIndex((item) => item.id === entry.id) + 1;
-  const topThirty = all.slice(0, 30);
-  localStorage.setItem(RANKING_KEY, JSON.stringify(topThirty));
+export async function getRankings() {
+  const response = await fetch('/api/rankings', {
+    cache: 'no-store',
+    headers: { Accept: 'application/json' },
+  });
+  return (await readResponse(response)).rankings;
+}
+
+export async function addRanking(name: string, score: number) {
+  const cleanName = Array.from(name.normalize('NFKC').trim())
+    .slice(0, 10)
+    .join('');
+  const response = await fetch('/api/rankings', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: cleanName, score }),
+  });
+  const result = await readResponse(response);
   localStorage.setItem(PLAYER_NAME_KEY, cleanName);
   return {
-    rankings: topThirty,
-    rank: position <= 30 ? position : null,
+    rankings: result.rankings,
+    rank: result.rank ?? null,
   };
 }
 

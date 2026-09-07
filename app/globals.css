@@ -497,6 +497,12 @@ canvas {
 .score-entry button:disabled {
   opacity: 0.4;
 }
+.score-entry-error {
+  display: block;
+  margin-top: 7px;
+  color: #b64141;
+  font-size: 10px;
+}
 .over-card {
   background: #f4f6f4;
 }

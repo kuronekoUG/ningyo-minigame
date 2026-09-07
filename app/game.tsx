@@ -9,6 +9,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {
   newGame,
@@ -54,6 +55,10 @@ export default function GamePanel() {
     [latestRank, setLatestRank] = useState<number | null>(null),
     [playerName, setPlayerName] = useState(''),
     [registered, setRegistered] = useState(false),
+    [submittingScore, setSubmittingScore] = useState(false),
+    [rankingStatus, setRankingStatus] = useState<'loading' | 'ready' | 'error'>(
+      'loading',
+    ),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
   function tone(hit = false) {
     if (!sound.current) return;
@@ -333,19 +338,37 @@ export default function GamePanel() {
     };
   }, []);
   useEffect(() => {
-    setRanking(getRankings().slice(0, 5));
-    setPlayerName(getSavedPlayerName());
+    let active = true;
+    void getRankings()
+      .then((entries) => {
+        if (!active) return;
+        setPlayerName(getSavedPlayerName());
+        setRanking(entries.slice(0, 5));
+        setRankingStatus('ready');
+      })
+      .catch(() => {
+        if (!active) return;
+        setPlayerName(getSavedPlayerName());
+        setRankingStatus('error');
+      });
+    return () => {
+      active = false;
+    };
   }, []);
-  function registerScore(event: React.FormEvent<HTMLFormElement>) {
+  async function registerScore(event: React.SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (registered || !playerName.trim()) return;
+    if (registered || submittingScore || !playerName.trim()) return;
+    setSubmittingScore(true);
     try {
-      const result = addRanking(playerName, score);
+      const result = await addRanking(playerName, score);
       setLatestRank(result.rank);
       setRanking(result.rankings.slice(0, 5));
+      setRankingStatus('ready');
       setRegistered(true);
     } catch {
-      setAssetError(true);
+      setRankingStatus('error');
+    } finally {
+      setSubmittingScore(false);
     }
   }
   useEffect(() => {
@@ -482,16 +505,29 @@ export default function GamePanel() {
                     onChange={(event) => setPlayerName(event.target.value)}
                     maxLength={10}
                     placeholder="なまえ"
-                    autoComplete="nickname"
+                    autoComplete="name"
                     aria-label="ランキングに登録する名前"
                   />
-                  <button type="submit" disabled={!playerName.trim()}>
-                    登録
+                  <button
+                    type="submit"
+                    disabled={!playerName.trim() || submittingScore}
+                  >
+                    {submittingScore ? '送信中…' : '登録'}
                   </button>
                 </div>
+                {rankingStatus === 'error' && (
+                  <small className="score-entry-error">
+                    ランキングに接続できません。もう一度お試しください。
+                  </small>
+                )}
               </form>
             )}
-            <button ref={primary} className="primary-button" onClick={start}>
+            <button
+              ref={primary}
+              className="primary-button"
+              onClick={start}
+              disabled={submittingScore}
+            >
               <RotateCcw size={18} />
               もういちど泳ぐ
             </button>
@@ -540,7 +576,7 @@ export default function GamePanel() {
           <span>
             <Trophy size={15} /> ランキング
           </span>
-          <a href="/ranking">30位まで見る</a>
+          <Link href="/ranking">30位まで見る</Link>
         </div>
         {ranking.length ? (
           <ol className="ranking-list">
@@ -562,7 +598,13 @@ export default function GamePanel() {
             })}
           </ol>
         ) : (
-          <p className="ranking-empty">最初の記録をつくろう。</p>
+          <p className="ranking-empty">
+            {rankingStatus === 'loading'
+              ? 'ランキングを読み込み中…'
+              : rankingStatus === 'error'
+                ? 'ランキングに接続できません。'
+                : '最初の記録をつくろう。'}
+          </p>
         )}
       </section>
       <output className="sr-only" aria-live="polite">
