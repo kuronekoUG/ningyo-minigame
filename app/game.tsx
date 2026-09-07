@@ -20,6 +20,7 @@ import {
   PLAYER_Y,
   type Mode,
 } from './engine';
+import { GAME_OVER_LINES } from './game-over-lines';
 import {
   addRanking,
   getRankings,
@@ -41,6 +42,7 @@ export default function GamePanel() {
     sound = useRef(false),
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
+    lastGameOverLine = useRef(0),
     nameInput = useRef<HTMLInputElement>(null),
     primary = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>('ready'),
@@ -51,7 +53,8 @@ export default function GamePanel() {
     [ranking, setRanking] = useState<RankingEntry[]>([]),
     [latestRank, setLatestRank] = useState<number | null>(null),
     [playerName, setPlayerName] = useState(''),
-    [registered, setRegistered] = useState(false);
+    [registered, setRegistered] = useState(false),
+    [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
   function tone(hit = false) {
     if (!sound.current) return;
     try {
@@ -127,7 +130,7 @@ export default function GamePanel() {
       caveImage.onerror =
         () => setAssetError(true);
     img.src = '/sprites.png';
-    hero.src = '/mermaid-back-handdrawn-v2.png';
+    hero.src = '/mermaid-back-handdrawn-v3.png';
     rockImage.src = '/rock-handdrawn.png';
     caveImage.src = '/cave-course-rough.png';
     const down = (e: KeyboardEvent) => {
@@ -181,6 +184,12 @@ export default function GamePanel() {
       }
       if (result.hit) {
         tone(true);
+        let lineIndex = Math.floor(Math.random() * GAME_OVER_LINES.length);
+        if (lineIndex === lastGameOverLine.current) {
+          lineIndex = (lineIndex + 1) % GAME_OVER_LINES.length;
+        }
+        lastGameOverLine.current = lineIndex;
+        setGameOverLine(GAME_OVER_LINES[lineIndex]);
         setMode('crashed');
         keys.current.clear();
         held.current = 0;
@@ -452,7 +461,7 @@ export default function GamePanel() {
         {mode === 'over' && (
           <div className="start-card over-card">
             <span className="tiny-caps">GAME OVER</span>
-            <h2>……みつかっちゃった。</h2>
+            <h2 className="game-over-line">{gameOverLine}</h2>
             <div className="score-result">
               <strong>{score}</strong>
               <span>pt</span>
@@ -529,7 +538,7 @@ export default function GamePanel() {
       >
         <div className="ranking-heading">
           <span>
-            <Trophy size={15} /> 洞窟ランキング
+            <Trophy size={15} /> ランキング
           </span>
           <a href="/ranking">30位まで見る</a>
         </div>

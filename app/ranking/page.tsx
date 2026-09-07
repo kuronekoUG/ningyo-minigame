@@ -24,7 +24,7 @@ export default function RankingPage() {
           <Trophy size={27} />
           <span>LOCAL SCORE</span>
         </div>
-        <h1>洞窟ランキング</h1>
+        <h1>ランキング</h1>
         <p>このブラウザに保存された上位30件</p>
         <ol className="ranking-table">
           {Array.from({ length: 30 }, (_, index) => {

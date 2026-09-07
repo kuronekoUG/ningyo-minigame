@@ -86,14 +86,17 @@ export function stepGame(
         angle: (random() - 0.5) * 0.45,
       });
     }
-    const snackLane = lanes[rockCount];
-    g.items.push({
-      kind: 'snack',
-      x: 48 + snackLane * 96,
-      y: -145 - random() * 34,
-      size: 49,
-      angle: (random() - 0.5) * 0.3,
-    });
+    for (const [index, snackLane] of lanes
+      .slice(rockCount, rockCount + 2)
+      .entries()) {
+      g.items.push({
+        kind: 'snack',
+        x: 48 + snackLane * 96,
+        y: -128 - index * 105 - random() * 34,
+        size: 49,
+        angle: (random() - 0.5) * 0.3,
+      });
+    }
     g.spawn = Math.max(0.68, 1.28 - g.time * 0.01);
   }
   let ate = false,

@@ -449,6 +449,14 @@ canvas {
   margin-bottom: 18px;
   line-height: 1.7;
 }
+.over-card .game-over-line {
+  display: grid;
+  min-height: 2.5em;
+  place-items: center;
+  margin-bottom: 5px;
+  font-size: clamp(20px, 5vw, 27px);
+  line-height: 1.25;
+}
 .score-entry {
   margin: -5px 0 18px;
 }
@@ -648,7 +656,7 @@ canvas {
   width: 108px;
   height: 108px;
   margin: -10px auto 0;
-  background: url(/mermaid-back-handdrawn-v2.png) center / contain no-repeat;
+  background: url(/mermaid-back-handdrawn-v3.png) center / contain no-repeat;
 }
 .with-sprite .tiny-caps {
   display: block;
