@@ -40,7 +40,9 @@ export function getScrollSpeed(time: number) {
 }
 
 export function getRockCount(time: number) {
-  return Math.min(4, 1 + Math.floor(time / 16));
+  if (time < 22) return 1;
+  if (time < 50) return 2;
+  return 3;
 }
 export function stepGame(
   g: Game,
@@ -68,18 +70,18 @@ export function stepGame(
   const speed = getScrollSpeed(g.time);
   g.spawn -= dt;
   if (g.spawn <= 0) {
-    // The cave gets denser over time, while one lane always remains open.
+    // More rocks appear later, but they are staggered so they never form a wall.
     const lanes = [0, 1, 2, 3, 4];
     for (let i = lanes.length - 1; i > 0; i--) {
       const j = Math.floor(random() * (i + 1));
       [lanes[i], lanes[j]] = [lanes[j], lanes[i]];
     }
     const rockCount = getRockCount(g.time);
-    for (const lane of lanes.slice(0, rockCount)) {
+    for (const [index, lane] of lanes.slice(0, rockCount).entries()) {
       g.items.push({
         kind: 'rock',
         x: 48 + lane * 96,
-        y: -78 - random() * 22,
+        y: -78 - index * 145 - random() * 30,
         size: 72 + random() * 18,
         angle: (random() - 0.5) * 0.45,
       });
@@ -88,11 +90,11 @@ export function stepGame(
     g.items.push({
       kind: 'snack',
       x: 48 + snackLane * 96,
-      y: -76,
+      y: -145 - random() * 34,
       size: 49,
       angle: (random() - 0.5) * 0.3,
     });
-    g.spawn = Math.max(0.62, 1.22 - g.time * 0.008);
+    g.spawn = Math.max(0.78, 1.35 - g.time * 0.006);
   }
   let ate = false,
     hit = false;

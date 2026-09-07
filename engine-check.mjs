@@ -37,13 +37,23 @@ assert.equal(g.items.length, 2);
 assert.notEqual(g.items[0].x, g.items[1].x);
 assert.ok(getScrollSpeed(45) > getScrollSpeed(5));
 assert.equal(getRockCount(0), 1);
-assert.equal(getRockCount(32), 3);
+assert.equal(getRockCount(32), 2);
+assert.equal(getRockCount(60), 3);
 g = startGame();
-g.time = 32;
+g.time = 60;
 g.spawn = 0;
 stepGame(g, 0.016, 0, null, () => 0.5);
 assert.equal(g.items.filter((item) => item.kind === 'rock').length, 3);
 assert.equal(new Set(g.items.map((item) => item.x)).size, 4);
+const rockRows = g.items
+  .filter((item) => item.kind === 'rock')
+  .map((item) => item.y)
+  .sort((a, b) => b - a);
+assert.ok(
+  rockRows.every(
+    (row, index) => index === 0 || rockRows[index - 1] - row >= 145,
+  ),
+);
 const y = g.items[0].y;
 stepGame(g, 0.04, 0, null);
 assert.ok(g.items[0].y > y);
