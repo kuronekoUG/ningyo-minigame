@@ -78,9 +78,10 @@ console.log(
   const {
     getMultiplier,
     COMBO_WINDOW,
-    FEVER_COMBO,
     FEVER_DURATION,
     MAX_MULTIPLIER,
+    SCALE_FIRST_AT,
+    SCALE_INTERVAL,
   } = await import('./app/engine.ts');
   assert.equal(getMultiplier(0), 1);
   assert.equal(getMultiplier(3), 1);
@@ -88,10 +89,8 @@ console.log(
   assert.equal(getMultiplier(8), 3);
   assert.equal(getMultiplier(99), MAX_MULTIPLIER);
 
-  const eat = (game) => {
-    game.items = [
-      { kind: 'snack', x: game.x, y: PLAYER_Y, size: 49, angle: 0 },
-    ];
+  const eat = (game, kind = 'snack') => {
+    game.items = [{ kind, x: game.x, y: PLAYER_Y, size: 49, angle: 0 }];
     return stepGame(game, 0.016, 0, null);
   };
 
@@ -117,18 +116,42 @@ console.log(
   assert.equal(lapsed, true);
   assert.equal(c.combo, 0);
 
-  // a long enough chain opens サクサクタイム
+  // a long chain no longer opens サクサクタイム by itself
   c = startGame();
   c.spawn = 99;
-  let started = false;
-  for (let i = 0; i < FEVER_COMBO; i++)
-    started = started || eat(c).feverStarted;
-  assert.equal(started, true);
+  for (let i = 0; i < 40; i++) eat(c);
+  assert.equal(c.fever, 0);
+
+  // no scale is offered before its timer runs down
+  c = startGame();
+  c.spawn = 0;
+  stepGame(c, 0.016, 0, null, () => 0.5);
+  assert.equal(c.items.filter((i) => i.kind === 'scale').length, 0);
+
+  // once it has, exactly one scale joins the wave
+  c = startGame();
+  c.time = 0;
+  c.scaleTimer = 0;
+  c.spawn = 0;
+  stepGame(c, 0.016, 0, null, () => 0.5);
+  assert.equal(c.items.filter((i) => i.kind === 'scale').length, 1);
+  assert.equal(c.scaleTimer, SCALE_INTERVAL);
+  // and no second one while it is still falling
+  c.spawn = 0;
+  c.scaleTimer = 0;
+  stepGame(c, 0.016, 0, null, () => 0.5);
+  assert.equal(c.items.filter((i) => i.kind === 'scale').length, 1);
+  assert.ok(SCALE_FIRST_AT > 0);
+
+  // picking one up opens サクサクタイム
+  c = startGame();
+  c.spawn = 99;
+  assert.equal(eat(c, 'scale').feverStarted, true);
   assert.ok(c.fever > 0);
+  assert.equal(c.items.length, 0);
 
   // rocks stop spawning and stop hurting while it lasts
   c.spawn = 0;
-  c.items = [];
   stepGame(c, 0.016, 0, null, () => 0.5);
   assert.equal(c.items.filter((i) => i.kind === 'rock').length, 0);
   assert.equal(c.items.filter((i) => i.kind === 'snack').length, 5);
@@ -156,6 +179,4 @@ console.log(
   c.items = [{ kind: 'rock', x: c.x, y: PLAYER_Y, size: 85, angle: 0 }];
   assert.equal(stepGame(c, 0.016, 0, null).hit, true);
 }
-console.log(
-  'PASS: combo multiplier, chain lapse, サクサクタイム start/effects/end.',
-);
+console.log('PASS: combo multiplier, chain lapse, scale drop rate, サクサクタイム via scale.');

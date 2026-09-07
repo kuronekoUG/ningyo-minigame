@@ -5,11 +5,14 @@ export const LANE_COUNT = 5;
 // A chain survives this long between snacks, so dodging never kills it outright.
 export const COMBO_WINDOW = 2.5;
 export const MAX_MULTIPLIER = 5;
-export const FEVER_COMBO = 16;
-export const FEVER_DURATION = 4;
+export const FEVER_DURATION = 4.5;
+// A scale is the rare pick-up that opens サクサクタイム, so it must not be
+// common enough to feel routine.
+export const SCALE_FIRST_AT = 13;
+export const SCALE_INTERVAL = 21;
 export type Mode = 'ready' | 'playing' | 'paused' | 'crashed' | 'over';
 export type Item = {
-  kind: 'rock' | 'snack';
+  kind: 'rock' | 'snack' | 'scale';
   x: number;
   y: number;
   size: number;
@@ -28,6 +31,7 @@ export type Game = {
   combo: number;
   comboTimer: number;
   fever: number;
+  scaleTimer: number;
 };
 export type Step = {
   ate: boolean;
@@ -56,6 +60,7 @@ export function newGame(): Game {
     combo: 0,
     comboTimer: 0,
     fever: 0,
+    scaleTimer: SCALE_FIRST_AT,
   };
 }
 export function startGame(): Game {
@@ -135,6 +140,7 @@ export function stepGame(
   );
   const speed = getScrollSpeed(g.time);
   const inFever = g.fever > 0;
+  if (!inFever) g.scaleTimer -= dt;
   g.spawn -= dt;
   if (g.spawn <= 0) {
     // More rocks appear later, but they are staggered so they never form a wall.
@@ -154,15 +160,20 @@ export function stepGame(
         angle: (random() - 0.5) * 0.45,
       });
     }
+    // At most one scale is in play, and only once its timer has run down.
+    const dropScale =
+      !inFever && g.scaleTimer <= 0 && !g.items.some((i) => i.kind === 'scale');
     for (const [index, snackLane] of lanes.slice(rockCount).entries()) {
+      const scale = dropScale && index === 0;
       g.items.push({
-        kind: 'snack',
+        kind: scale ? 'scale' : 'snack',
         x: 48 + snackLane * 96,
         y: -128 - index * 105 - random() * 34,
-        size: 49,
+        size: scale ? 46 : 49,
         angle: (random() - 0.5) * 0.3,
       });
     }
+    if (dropScale) g.scaleTimer = SCALE_INTERVAL;
     g.spawn = getSpawnInterval(g.time) * (inFever ? 0.55 : 1);
   }
   let ate = false,
@@ -181,6 +192,13 @@ export function stepGame(
         hit = true;
         break;
       }
+      if (item.kind === 'scale') {
+        g.fever = FEVER_DURATION;
+        g.pops.push({ x: item.x, y: item.y, life: 1.4, text: 'ウロコ！' });
+        item.y = 900;
+        feverStarted = true;
+        continue;
+      }
       g.combo++;
       g.comboTimer = COMBO_WINDOW;
       const gained = 10 * (inFever ? MAX_MULTIPLIER : getMultiplier(g.combo));
@@ -189,10 +207,6 @@ export function stepGame(
       g.pops.push({ x: item.x, y: item.y, life: 1, text: `+${gained}` });
       item.y = 900;
       ate = true;
-      if (!inFever && g.combo >= FEVER_COMBO) {
-        g.fever = FEVER_DURATION;
-        feverStarted = true;
-      }
     }
   }
   g.items = g.items.filter((i) => i.y < HEIGHT + 90);

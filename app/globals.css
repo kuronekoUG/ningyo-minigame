@@ -47,14 +47,18 @@ button:disabled {
   opacity: 0.7;
 }
 .ocean-page {
-  min-height: 100svh;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background:
     radial-gradient(ellipse at 68% 42%, #1f6b7840, transparent 42%),
     linear-gradient(125deg, #061522, #0d2c3b 54%, #071824);
   padding: 0 5vw;
 }
 .topbar {
-  height: 86px;
+  flex: none;
+  height: clamp(52px, 9svh, 86px);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -74,10 +78,18 @@ button:disabled {
   font-weight: 500;
 }
 .game-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  width: 100%;
   max-width: 490px;
-  margin: 36px auto 22px;
+  margin: clamp(8px, 2svh, 36px) auto clamp(6px, 1.5svh, 22px);
 }
 .game-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   border: 2px solid #295568;
   border-radius: 26px;
   overflow: hidden;
@@ -88,11 +100,12 @@ button:disabled {
   color: #173f52;
 }
 .hud {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 15px 24px;
-  height: 80px;
+  padding: 0 24px;
+  height: clamp(58px, 10svh, 80px);
   border-bottom: 2px solid #295568;
 }
 .hud > div {
@@ -123,80 +136,9 @@ button:disabled {
   font-size: 12px;
   letter-spacing: 0;
 }
-.combo-meter {
-  align-items: center;
-  gap: 3px;
-  animation: combo-pop 0.22s ease-out;
-}
-.combo-meter strong {
-  font-size: 25px;
-  color: #ffd98a;
-  letter-spacing: 1px;
-}
-.combo-meter span {
-  font-size: 10px;
-  letter-spacing: 1px;
-  opacity: 0.72;
-}
-.combo-track {
-  width: 74px;
-  height: 4px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #ffffff1f;
-}
-.combo-track i {
-  display: block;
-  height: 100%;
-  background: #ffd98a;
-  transform-origin: left center;
-  animation: combo-drain linear forwards;
-}
-.combo-meter.fever strong,
-.combo-meter.fever span {
-  color: #ffe9a8;
-  opacity: 1;
-}
-.combo-meter.fever .combo-track i {
-  background: #ffe9a8;
-  animation: combo-flash 0.5s ease-in-out infinite;
-}
-@keyframes combo-drain {
-  from {
-    transform: scaleX(1);
-  }
-  to {
-    transform: scaleX(0);
-  }
-}
-@keyframes combo-flash {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-  50% {
-    opacity: 0.45;
-    transform: scaleX(0.82);
-  }
-}
-@keyframes combo-pop {
-  from {
-    transform: scale(0.86);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .combo-meter,
-  .combo-track i {
-    animation: none;
-  }
-}
 .playfield {
-  height: min(63vh, 590px);
-  min-height: 410px;
+  flex: 1;
+  min-height: 0;
   position: relative;
   overflow: hidden;
   background: #0b3142;
@@ -289,7 +231,8 @@ button:disabled {
   color: #557581;
 }
 .game-bottom {
-  height: 43px;
+  flex: none;
+  height: clamp(32px, 5.5svh, 43px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -306,6 +249,7 @@ button:disabled {
   margin-right: 8px;
 }
 footer {
+  flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -313,7 +257,7 @@ footer {
   text-align: center;
   font-size: 12px;
   color: #789ea6;
-  padding: 14px 16px 20px;
+  padding: clamp(6px, 1.5svh, 14px) 16px clamp(8px, 2svh, 20px);
   letter-spacing: 0.5px;
 }
 footer a {
@@ -486,6 +430,58 @@ canvas {
 }
 .mobile-controls {
   display: none;
+}
+/* The start and game-over cards have to fit inside a playfield that shrinks
+   with the viewport — X's in-app browser leaves very little of it. */
+@media (max-height: 760px) {
+  .start-card {
+    padding: 20px 18px;
+  }
+  .sprite-preview {
+    width: 78px;
+    height: 78px;
+  }
+  .start-card h2 {
+    font-size: 22px;
+    margin: 10px 0 8px;
+  }
+  .start-card p {
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 0 0 16px;
+  }
+  .primary-button {
+    min-height: 46px;
+  }
+  .score-result strong {
+    font-size: 46px;
+  }
+}
+@media (max-height: 620px) {
+  .sprite-preview {
+    display: none;
+  }
+  .start-card {
+    padding: 16px 16px;
+  }
+  .start-card h2 {
+    font-size: 20px;
+    margin: 8px 0 6px;
+  }
+  .start-card p {
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 12px;
+  }
+  .start-hint {
+    font-size: 11px;
+  }
+  .over-card .game-over-line {
+    font-size: 18px;
+  }
+  .score-result strong {
+    font-size: 38px;
+  }
 }
 .sr-only {
   position: absolute;

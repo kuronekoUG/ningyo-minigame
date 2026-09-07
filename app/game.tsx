@@ -39,6 +39,7 @@ export default function GamePanel() {
     sprite = useRef<HTMLImageElement | null>(null),
     mermaid = useRef<HTMLImageElement | null>(null),
     rock = useRef<HTMLImageElement | null>(null),
+    scale = useRef<HTMLImageElement | null>(null),
     cave = useRef<HTMLImageElement | null>(null),
     sound = useRef(false),
     audio = useRef<AudioContext | null>(null),
@@ -50,11 +51,6 @@ export default function GamePanel() {
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(true),
-    [combo, setCombo] = useState(0),
-    [multiplier, setMultiplier] = useState(1),
-    [fever, setFever] = useState(false),
-    // Bumping this per snack restarts the chain bar's CSS countdown.
-    [chain, setChain] = useState(0),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
   function tone(kind: 'snack' | 'hit' | 'fever' = 'snack', step = 0) {
     if (!sound.current) return;
@@ -93,9 +89,6 @@ export default function GamePanel() {
     held.current = 0;
     target.current = null;
     setScore(0);
-    setCombo(0);
-    setMultiplier(1);
-    setFever(false);
     setMode('playing');
     field.current?.focus();
   }
@@ -118,6 +111,7 @@ export default function GamePanel() {
     const hero = new Image();
     const rockImage = new Image();
     const caveImage = new Image();
+    const scaleImage = new Image();
     img.onload = () => {
       sprite.current = img;
       if (mermaid.current && rock.current) setLoaded(true);
@@ -133,15 +127,20 @@ export default function GamePanel() {
     caveImage.onload = () => {
       cave.current = caveImage;
     };
+    scaleImage.onload = () => {
+      scale.current = scaleImage;
+    };
     img.onerror =
       hero.onerror =
       rockImage.onerror =
       caveImage.onerror =
+      scaleImage.onerror =
         () => setAssetError(true);
     img.src = withBase('/sprites.png');
     hero.src = withBase('/mermaid-rough.png');
     rockImage.src = withBase('/rock-handdrawn.png');
     caveImage.src = withBase('/cave-course-rough.jpg');
+    scaleImage.src = withBase('/scale.png');
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -190,24 +189,9 @@ export default function GamePanel() {
       if (result.ate) {
         const step = g.fever > 0 ? MAX_MULTIPLIER : getMultiplier(g.combo);
         setScore(g.score);
-        setCombo(g.combo);
-        setMultiplier(step);
-        setChain((n) => n + 1);
         tone('snack', step - 1);
       }
-      if (result.feverStarted) {
-        setFever(true);
-        tone('fever');
-      }
-      if (result.feverEnded) {
-        setFever(false);
-        setCombo(0);
-        setMultiplier(1);
-      }
-      if (result.comboLost) {
-        setCombo(0);
-        setMultiplier(1);
-      }
+      if (result.feverStarted) tone('fever');
       if (result.hit) {
         tone('hit');
         let lineIndex = Math.floor(Math.random() * GAME_OVER_LINES.length);
@@ -315,6 +299,18 @@ export default function GamePanel() {
             }
             if (i.kind === 'rock') {
               drawRock(i.x, i.y, i.size, i.angle, rockAlpha);
+            } else if (i.kind === 'scale' && scale.current) {
+              ctx.save();
+              ctx.translate(i.x, i.y);
+              ctx.rotate(i.angle + Math.sin(g.time * 3 + i.x) * 0.16);
+              ctx.drawImage(
+                scale.current,
+                -i.size / 2,
+                -i.size / 2,
+                i.size,
+                i.size,
+              );
+              ctx.restore();
             } else {
               draw(1, i.x, i.y, i.size, i.angle);
             }
@@ -336,6 +332,26 @@ export default function GamePanel() {
             ctx.strokeText(p.text, p.x, p.y - 27);
             ctx.fillText(p.text, p.x, p.y - 27);
             ctx.globalAlpha = 1;
+          }
+          if (g.combo > 0 || g.fever > 0) {
+            // The HUD sits above the playfield and went unread mid-run, so the
+            // multiplier is drawn low in the field instead, beside the player.
+            const top = g.fever > 0;
+            const multiple = top ? MAX_MULTIPLIER : getMultiplier(g.combo);
+            ctx.save();
+            ctx.textAlign = 'left';
+            ctx.font = 'bold 30px sans-serif';
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#08222f';
+            ctx.strokeText(`×${multiple}`, 18, 610);
+            ctx.fillStyle = top ? '#ffe9a8' : '#ffd98a';
+            ctx.fillText(`×${multiple}`, 18, 610);
+            const width = top ? 1 : Math.max(0, g.comboTimer / COMBO_WINDOW);
+            ctx.fillStyle = '#08222f88';
+            ctx.fillRect(18, 618, 64, 5);
+            ctx.fillStyle = top ? '#ffe9a8' : '#ffd98a';
+            ctx.fillRect(18, 618, 64 * width, 5);
+            ctx.restore();
           }
           if (g.fever > 0) {
             // Banner fades out over the last half second so the end is legible.
@@ -372,6 +388,8 @@ export default function GamePanel() {
       rockImage.onerror = null;
       caveImage.onload = null;
       caveImage.onerror = null;
+      scaleImage.onload = null;
+      scaleImage.onerror = null;
       void audio.current?.close();
     };
   }, []);
@@ -408,18 +426,6 @@ export default function GamePanel() {
             {String(score).padStart(4, '0')} <small>pt</small>
           </strong>
         </div>
-        {(combo > 0 || fever) && (
-          <div className={`combo-meter${fever ? ' fever' : ''}`}>
-            <strong>×{multiplier}</strong>
-            <div className="combo-track">
-              <i
-                key={fever ? 'fever' : chain}
-                style={{ animationDuration: `${COMBO_WINDOW}s` }}
-              />
-            </div>
-            <span>{fever ? 'サクサクタイム！' : `${combo} れんぞく`}</span>
-          </div>
-        )}
         <div className="hud-right">
           <button
             className="icon-button"
@@ -480,9 +486,9 @@ export default function GamePanel() {
             <span className="tiny-caps">IN THE HIDDEN CAVE</span>
             <h2>サクサク……</h2>
             <p>
-              洞窟の岩をよけて、しるこサンドを
+              岩をよけて、しるこサンドを集めよう。
               <br />
-              たどっていこう。
+              ウロコを拾うと、サクサクタイム。
             </p>
             <button
               className="primary-button"
