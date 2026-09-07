@@ -11,7 +11,7 @@ type RankingResponse = {
   error?: string;
 };
 
-const PLAYER_NAME_KEY = 'shiruko-sand-swim-player-name';
+const PLAYER_NAME_KEY = 'ningyo-minigame-player-name';
 
 async function readResponse(response: Response) {
   const body = (await response.json()) as RankingResponse;

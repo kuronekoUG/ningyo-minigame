@@ -1,5 +1,5 @@
 {
-  "name": "shiruko-sand-swim-local",
+  "name": "ningyo-minigame-local",
   "main": "dist/server/index.js",
   "compatibility_date": "2026-05-15",
   "compatibility_flags": ["nodejs_compat"],

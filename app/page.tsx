@@ -1,12 +1,12 @@
 'use client';
-import { Waves } from 'lucide-react';
+import { Cookie } from 'lucide-react';
 import GamePanel from './game';
 export default function Home() {
   return (
     <main className="ocean-page">
       <header className="topbar">
         <span>
-          <Waves size={23} /> SHIRUKO SAND SWIM
+          <Cookie size={23} /> 人魚のしるこサンドさんぽ
         </span>
         <span className="fan-label">非公式ファンゲーム</span>
       </header>
@@ -28,7 +28,7 @@ export default function Home() {
           <div className="instruction">
             <span className="step">01</span>
             <div>
-              <b>左右に泳ごう</b>
+              <b>左右に移動しよう</b>
               <p>
                 ← → キー / A・D キー
                 <br />

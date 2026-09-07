@@ -476,7 +476,7 @@ export default function GamePanel() {
             <p>洞窟の中で、ちょっとひとやすみ。</p>
             <button ref={primary} className="primary-button" onClick={pause}>
               <Play size={18} />
-              泳ぎつづける
+              すすみつづける
             </button>
             <span className="start-hint">Space / Esc キーでも再開</span>
           </div>
@@ -529,7 +529,7 @@ export default function GamePanel() {
               disabled={submittingScore}
             >
               <RotateCcw size={18} />
-              もういちど泳ぐ
+              もういちどすすむ
             </button>
           </div>
         )}

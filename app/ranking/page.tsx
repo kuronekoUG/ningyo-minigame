@@ -33,12 +33,12 @@ export default function RankingPage() {
         <Link href="/" className="back-link">
           <ArrowLeft size={18} /> ゲームにもどる
         </Link>
-        <span>SHIRUKO SAND SWIM</span>
+        <span>人魚のしるこサンドさんぽ</span>
       </header>
       <section className="ranking-sheet">
         <div className="ranking-title-mark">
           <Trophy size={27} />
-          <span>LOCAL SCORE</span>
+          <span>TOP 30</span>
         </div>
         <h1>ランキング</h1>
         <p>
