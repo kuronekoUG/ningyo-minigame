@@ -5,7 +5,7 @@ const SITE_ORIGIN = 'https://kuronekoug.github.io';
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 // Pages serves the game under a base path, so card URLs are built by hand.
 const SITE_URL = `${SITE_ORIGIN}${BASE_PATH}/`;
-const OG_IMAGE = `${SITE_ORIGIN}${BASE_PATH}/og.png`;
+const OG_IMAGE = `${SITE_ORIGIN}${BASE_PATH}/og.jpg`;
 const TITLE = 'しるこさんぽ';
 const DESCRIPTION =
   '岩をよけて、しるこサンドをぱくっ。洞窟を進む縦スクロールの非公式ファンゲーム。キーボードとスマホに対応。';

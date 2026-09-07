@@ -23,6 +23,8 @@ import {
 import { GAME_OVER_LINES } from './game-over-lines';
 
 const ASSET_BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+// Sprite sheet holds three square cells side by side.
+const SPRITE_CELL = 192;
 
 export default function GamePanel() {
   const canvas = useRef<HTMLCanvasElement>(null),
@@ -121,7 +123,7 @@ export default function GamePanel() {
     img.src = `${ASSET_BASE}/sprites.png`;
     hero.src = `${ASSET_BASE}/mermaid-back-handdrawn-v3.png`;
     rockImage.src = `${ASSET_BASE}/rock-handdrawn.png`;
-    caveImage.src = `${ASSET_BASE}/cave-course-rough.png`;
+    caveImage.src = `${ASSET_BASE}/cave-course-rough.jpg`;
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -228,10 +230,10 @@ export default function GamePanel() {
           ctx.rotate(angle);
           ctx.drawImage(
             sprite.current,
-            cell * 724,
+            cell * SPRITE_CELL,
             0,
-            724,
-            724,
+            SPRITE_CELL,
+            SPRITE_CELL,
             -size / 2,
             -size / 2,
             size,
