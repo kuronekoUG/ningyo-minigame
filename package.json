@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
+    "build:pages": "npm run build && node scripts/prepare-pages.mjs",
     "start": "vite preview --outDir dist/client",
     "lint": "oxlint",
     "format": "oxfmt"
