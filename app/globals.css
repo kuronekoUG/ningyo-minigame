@@ -488,19 +488,21 @@ canvas {
      cap goes on the shell, not the field: capping the field made WebKit derive
      its width from that height and leave the shell showing beside it. */
   .game-shell {
-    max-height: calc(var(--app-height, 100svh) * 0.76);
+    max-height: calc(var(--app-height, 100svh) * 0.86);
+  }
+  /* Wider too, so the taller field is not left pillarboxed to make up the
+     3:4 the canvas draws at. */
+  .game-layout {
+    max-width: min(490px, calc(var(--app-height, 100svh) * 0.56));
   }
   .game-layout {
     margin-top: clamp(4px, calc(var(--app-height, 100svh) * 0.01), 14px);
   }
-  /* The rights link sits in the game bar on a phone, so the footer here is a
-     decorative line only: it may fall behind the browser's floating bar, and
-     the height it was reserving goes to the game instead. */
-  footer a {
-    display: none;
-  }
+  /* On a phone the footer is redundant — the header already says 非公式ファン
+     ゲーム and the game bar carries the rights link — and it was the last thing
+     holding the shell down, so the height it reserved goes to the game. */
   footer {
-    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    display: none;
   }
 }
 .sr-only {

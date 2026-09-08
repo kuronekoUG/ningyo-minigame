@@ -199,17 +199,29 @@ export default function GamePanel() {
     // there. Measure it instead, take the smaller of the two readings, and keep
     // measuring: the layout then corrects itself in place rather than needing
     // the player to come back a few times.
+    let appliedHeight = 0,
+      appliedWidth = 0;
     const measure = () => {
       const height = Math.min(
         window.innerHeight,
         window.visualViewport?.height ?? Infinity,
       );
-      if (height > 0) {
-        document.documentElement.style.setProperty(
-          '--app-height',
-          `${Math.round(height)}px`,
-        );
-      }
+      if (height <= 0) return;
+      // A mobile browser's bars slide in and out as you touch the page, moving
+      // this by a few dozen pixels each time. Relaying out for that made the
+      // whole game shudder, so only a change big enough to be a real one — or
+      // a change of width, which a bar never causes — is worth acting on.
+      const settled =
+        appliedHeight &&
+        Math.abs(height - appliedHeight) < 80 &&
+        window.innerWidth === appliedWidth;
+      if (settled) return;
+      appliedHeight = Math.round(height);
+      appliedWidth = window.innerWidth;
+      document.documentElement.style.setProperty(
+        '--app-height',
+        `${appliedHeight}px`,
+      );
     };
     measure();
     const settle = [
@@ -220,7 +232,6 @@ export default function GamePanel() {
     window.addEventListener('resize', measure);
     window.addEventListener('orientationchange', measure);
     window.addEventListener('pageshow', measure);
-    window.visualViewport?.addEventListener('resize', measure);
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -448,7 +459,6 @@ export default function GamePanel() {
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
       window.removeEventListener('pageshow', measure);
-      window.visualViewport?.removeEventListener('resize', measure);
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
