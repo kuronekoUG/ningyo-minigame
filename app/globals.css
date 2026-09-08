@@ -409,6 +409,24 @@ canvas {
 .share-button:hover {
   background: #303030;
 }
+.save-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 42px;
+  margin-bottom: 10px;
+  border: 2px solid #2b5a68;
+  border-radius: 50px;
+  background: transparent;
+  color: #24505f;
+  font-weight: 700;
+  font-size: 14px;
+}
+.save-button:hover {
+  background: #2b5a681a;
+}
 .x-mark {
   font-family: Arial, sans-serif;
   font-size: 18px;

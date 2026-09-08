@@ -2,6 +2,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Download,
   Pause,
   Play,
   RotateCcw,
@@ -9,7 +10,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import NextImage from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   newGame,
   startGame,
@@ -46,7 +47,8 @@ export default function GamePanel() {
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     lastGameOverLine = useRef(0),
-    primary = useRef<HTMLButtonElement>(null);
+    primary = useRef<HTMLButtonElement>(null),
+    resultImage = useRef<File | null>(null);
   const [mode, setMode] = useState<Mode>('ready'),
     [score, setScore] = useState(0),
     [eaten, setEaten] = useState(0),
@@ -386,14 +388,120 @@ export default function GamePanel() {
       void audio.current?.close();
     };
   }, []);
+  // A shareable picture of the run, composed from the same art as the game.
+  const buildResultCard = useCallback(() => {
+    const W = 1200,
+      H = 630;
+    const sheet = document.createElement('canvas');
+    sheet.width = W;
+    sheet.height = H;
+    const c = sheet.getContext('2d');
+    if (!c || !cave.current || !mermaid.current) return null;
+    c.drawImage(cave.current, 0, -485, 1200, 1600);
+    c.fillStyle = '#071827a8';
+    c.fillRect(0, 0, W, H);
+
+    // a wobbling frame, as if ruled by hand
+    const jitter = () => (Math.random() - 0.5) * 7;
+    c.strokeStyle = '#fffce8';
+    c.globalAlpha = 0.32;
+    c.lineWidth = 6;
+    c.lineJoin = 'round';
+    c.beginPath();
+    const corners = [
+      [28, 26],
+      [1172, 26],
+      [1172, 604],
+      [28, 604],
+    ];
+    corners.forEach(([px, py], i) => {
+      const method = i === 0 ? 'moveTo' : 'lineTo';
+      c[method](px + jitter(), py + jitter());
+    });
+    c.closePath();
+    c.stroke();
+    c.globalAlpha = 1;
+
+    if (rock.current) {
+      c.globalAlpha = 0.55;
+      c.drawImage(rock.current, 1046, 46, 152, 152);
+      c.drawImage(rock.current, 812, 462, 120, 120);
+      c.globalAlpha = 1;
+    }
+    if (sprite.current) {
+      const trail: [number, number, number][] = [
+        [598, 76, 58],
+        [684, 126, 64],
+        [772, 176, 68],
+      ];
+      for (const [px, py, size] of trail) {
+        c.drawImage(sprite.current, px, py, size, size);
+      }
+    }
+    if (scale.current) c.drawImage(scale.current, 762, 466, 58, 58);
+    c.drawImage(mermaid.current, 876, 224, 258, 258);
+
+    const face = '"Hiragino Maru Gothic ProN", "Yu Gothic", Meiryo, sans-serif';
+    const ink = (text: string, px: number, py: number, font: string) => {
+      c.font = font;
+      c.lineWidth = 9;
+      c.lineJoin = 'round';
+      c.strokeStyle = '#12283a';
+      c.strokeText(text, px, py);
+      c.fillStyle = '#fffce8';
+      c.fillText(text, px, py);
+    };
+    c.textAlign = 'left';
+    c.fillStyle = '#8ad6c7';
+    c.font = `bold 19px ${face}`;
+    c.fillText('R E S U L T', 86, 132);
+    c.strokeStyle = '#8ad6c7';
+    c.lineWidth = 4;
+    c.beginPath();
+    c.moveTo(88, 152 + jitter());
+    c.lineTo(232, 150 + jitter());
+    c.stroke();
+
+    ink('しるこさんぽ', 82, 216, `bold 54px ${face}`);
+    ink(`${score}`, 82, 342, `bold 104px ${face}`);
+    const scoreWidth = c.measureText(`${score}`).width;
+    c.font = `bold 34px ${face}`;
+    c.fillStyle = '#ffd98a';
+    c.fillText('pt', 96 + scoreWidth, 342);
+    c.font = `bold 27px ${face}`;
+    c.fillStyle = '#e2eeea';
+    c.fillText(`しるこサンド ${eaten} 枚`, 86, 400);
+    c.font = `21px ${face}`;
+    c.fillStyle = '#a9c6c2';
+    c.fillText(gameOverLine, 86, 452);
+    c.fillText('洞窟を進む縦スクロールの非公式ファンゲーム', 86, 512);
+    return sheet;
+  }, [score, eaten, gameOverLine]);
+
   function shareUrl() {
     const here = new URL(window.location.href);
     here.searchParams.set('v', SHARE_VERSION);
     return here.toString();
   }
-  function shareScoreOnX() {
+  async function shareScoreOnX() {
+    const line = `しるこさんぽで ${score}pt！しるこサンドを ${eaten} 枚たべました。`;
+    const file = resultImage.current;
+    // X's post intent cannot carry an image, but a share sheet can, so the
+    // card travels with the post wherever the browser supports it.
+    if (file && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          text: `${line}\n${shareUrl()}`,
+          files: [file],
+        });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError')
+          return;
+      }
+    }
     const params = new URLSearchParams({
-      text: `しるこさんぽで ${score}pt！しるこサンドを ${eaten} 枚たべました。\n岩をよけて、しるこサンドを集めよう。`,
+      text: `${line}\n岩をよけて、しるこサンドを集めよう。`,
       url: shareUrl(),
       hashtags: 'しるこさんぽ',
     });
@@ -406,6 +514,31 @@ export default function GamePanel() {
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
   }, [mode]);
+  useEffect(() => {
+    // Sharing must run inside the click, so the file is ready beforehand.
+    if (mode !== 'over') return;
+    resultImage.current = null;
+    const sheet = buildResultCard();
+    sheet?.toBlob((blob) => {
+      if (blob) {
+        resultImage.current = new File([blob], 'shirukosanpo.png', {
+          type: 'image/png',
+        });
+      }
+    }, 'image/png');
+  }, [mode, buildResultCard]);
+  function saveResultCard() {
+    const sheet = buildResultCard();
+    sheet?.toBlob((blob) => {
+      if (!blob) return;
+      const href = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = `しるこさんぽ-${score}pt.png`;
+      link.click();
+      URL.revokeObjectURL(href);
+    }, 'image/png');
+  }
   function point(e: React.PointerEvent<HTMLDivElement>) {
     if (game.current.mode !== 'playing') return;
     // The canvas is letterboxed to keep its proportions, so the pointer maps
@@ -539,7 +672,11 @@ export default function GamePanel() {
               <span className="x-mark" aria-hidden="true">
                 X
               </span>
-              Xでスコアをポスト
+              スコアをポスト
+            </button>
+            <button className="save-button" onClick={saveResultCard}>
+              <Download size={17} />
+              画像を保存
             </button>
             <button ref={primary} className="primary-button" onClick={start}>
               <RotateCcw size={18} />
