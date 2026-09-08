@@ -160,7 +160,11 @@ console.log(
   const seeded = c.items.filter((i) => i.kind === 'snack');
   assert.ok(seeded.length >= 40);
   assert.ok(seeded.some((i) => i.y > 300));
-  assert.equal(new Set(seeded.map((i) => i.x)).size, 5);
+  // the rain is scattered off the lane centres, so count lanes not exact x
+  const lane = (i) => Math.round((i.x - 48) / 96);
+  assert.equal(new Set(seeded.map(lane)).size, 5);
+  // and it is scattered: no two rows share an exact x
+  assert.ok(new Set(seeded.map((i) => i.x)).size > 20);
 
   // rocks stop spawning and stop hurting while it lasts
   c.spawn = 0;

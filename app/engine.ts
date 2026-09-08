@@ -103,21 +103,39 @@ const FEVER_ROW = 16;
 export function getMultiplier(combo: number) {
   return Math.min(MAX_MULTIPLIER, 1 + Math.floor(combo / 4));
 }
+// Cycling the lanes laid the rain out in clean diagonals. Drawing them a bag
+// of five at a time keeps exactly one per lane in every five rows — so the
+// downpour stays as thick — while breaking the pattern.
+function bagLanes(count: number, random: () => number) {
+  const drawn: number[] = [];
+  while (drawn.length < count) {
+    const bag = [0, 1, 2, 3, 4];
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+    drawn.push(...bag);
+  }
+  return drawn.slice(0, count);
+}
+// Enough to unsettle the rows without putting a snack out of reach.
+function scatter(random: () => number) {
+  return (random() - 0.5) * 22;
+}
 // The rain has to be falling the moment it starts. Waves spawned above the
 // screen would take most of サクサクタイム just to arrive, so the column is
 // filled from the player's row upward the instant the scale is taken.
 function seedFever(g: Game, random: () => number) {
-  const offset = Math.floor(random() * LANE_COUNT);
-  let row = 0;
-  for (let y = 420; y > -320; y -= FEVER_ROW) {
+  const rows = Math.ceil(740 / FEVER_ROW);
+  const lanes = bagLanes(rows, random);
+  for (let row = 0; row < rows; row++) {
     g.items.push({
       kind: 'snack',
-      x: 48 + ((row + offset) % LANE_COUNT) * 96,
-      y: y - random() * 9,
+      x: 48 + lanes[row] * 96 + scatter(random),
+      y: 420 - row * FEVER_ROW + scatter(random),
       size: 49,
-      angle: (random() - 0.5) * 0.3,
+      angle: (random() - 0.5) * 0.5,
     });
-    row++;
   }
 }
 export function stepGame(
@@ -195,14 +213,16 @@ export function stepGame(
     // Free lanes first, then doubling up on the rocks' lanes, so four snacks
     // still fit once the rocks have taken three of the five.
     const snackLanes = inFever
-      ? Array.from({ length: FEVER_SNACKS }, (_, i) => lanes[i % LANE_COUNT])
+      ? bagLanes(FEVER_SNACKS, random)
       : [...lanes.slice(rockCount), ...lanes.slice(0, rockCount)].slice(
           0,
           getSnackCount(),
         );
     const row = inFever ? FEVER_ROW : 105;
     for (const [index, snackLane] of snackLanes.entries()) {
-      let y = -128 - index * row - random() * (inFever ? 9 : 34);
+      let y = inFever
+        ? -128 - index * row + scatter(random)
+        : -128 - index * row - random() * 34;
       const rock = rockRow.get(snackLane);
       if (rock !== undefined && Math.abs(y - rock) < LANE_CLEARANCE) {
         y = rock - LANE_CLEARANCE;
@@ -210,10 +230,10 @@ export function stepGame(
       const scale = dropScale && index === 0;
       g.items.push({
         kind: scale ? 'scale' : 'snack',
-        x: 48 + snackLane * 96,
+        x: 48 + snackLane * 96 + (inFever ? scatter(random) : 0),
         y,
         size: scale ? 46 : 49,
-        angle: (random() - 0.5) * 0.3,
+        angle: (random() - 0.5) * (inFever ? 0.5 : 0.3),
       });
     }
     if (dropScale) g.scaleTimer = SCALE_INTERVAL;
