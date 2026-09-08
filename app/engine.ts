@@ -94,9 +94,31 @@ export function getSnackCount() {
 // A snack sharing a lane with a rock has to clear it by this much to be worth
 // going for.
 const LANE_CLEARANCE = 132;
+// サクサクタイム rains them. What matters is not how many are in a wave but how
+// closely they follow each other down a single lane: at 16px a row across five
+// lanes, whichever lane you sit in gets one every 80px of scroll.
+export const FEVER_SNACKS = 20;
+const FEVER_ROW = 16;
 // Every fourth snack in a chain is worth another multiple, up to five.
 export function getMultiplier(combo: number) {
   return Math.min(MAX_MULTIPLIER, 1 + Math.floor(combo / 4));
+}
+// The rain has to be falling the moment it starts. Waves spawned above the
+// screen would take most of サクサクタイム just to arrive, so the column is
+// filled from the player's row upward the instant the scale is taken.
+function seedFever(g: Game, random: () => number) {
+  const offset = Math.floor(random() * LANE_COUNT);
+  let row = 0;
+  for (let y = 420; y > -320; y -= FEVER_ROW) {
+    g.items.push({
+      kind: 'snack',
+      x: 48 + ((row + offset) % LANE_COUNT) * 96,
+      y: y - random() * 9,
+      size: 49,
+      angle: (random() - 0.5) * 0.3,
+    });
+    row++;
+  }
 }
 export function stepGame(
   g: Game,
@@ -172,12 +194,15 @@ export function stepGame(
       !inFever && g.scaleTimer <= 0 && !g.items.some((i) => i.kind === 'scale');
     // Free lanes first, then doubling up on the rocks' lanes, so four snacks
     // still fit once the rocks have taken three of the five.
-    const snackLanes = [
-      ...lanes.slice(rockCount),
-      ...lanes.slice(0, rockCount),
-    ].slice(0, inFever ? LANE_COUNT : getSnackCount());
+    const snackLanes = inFever
+      ? Array.from({ length: FEVER_SNACKS }, (_, i) => lanes[i % LANE_COUNT])
+      : [...lanes.slice(rockCount), ...lanes.slice(0, rockCount)].slice(
+          0,
+          getSnackCount(),
+        );
+    const row = inFever ? FEVER_ROW : 105;
     for (const [index, snackLane] of snackLanes.entries()) {
-      let y = -128 - index * 105 - random() * 34;
+      let y = -128 - index * row - random() * (inFever ? 9 : 34);
       const rock = rockRow.get(snackLane);
       if (rock !== undefined && Math.abs(y - rock) < LANE_CLEARANCE) {
         y = rock - LANE_CLEARANCE;
@@ -192,7 +217,11 @@ export function stepGame(
       });
     }
     if (dropScale) g.scaleTimer = SCALE_INTERVAL;
-    g.spawn = getSpawnInterval(g.time) * (inFever ? 0.55 : 1);
+    // Waves follow each other by their own depth, so the rain is seamless at
+    // any speed rather than piling up when the cave is slow.
+    g.spawn = inFever
+      ? (FEVER_SNACKS * FEVER_ROW) / speed
+      : getSpawnInterval(g.time);
   }
   let ate = false,
     hit = false;
@@ -212,6 +241,7 @@ export function stepGame(
       }
       if (item.kind === 'scale') {
         g.fever = FEVER_DURATION;
+        seedFever(g, random);
         g.pops.push({ x: item.x, y: item.y, life: 1.4, text: 'ウロコ！' });
         item.y = 900;
         feverStarted = true;

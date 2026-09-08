@@ -155,13 +155,18 @@ console.log(
   c.spawn = 99;
   assert.equal(eat(c, 'scale').feverStarted, true);
   assert.ok(c.fever > 0);
-  assert.equal(c.items.length, 0);
+  assert.equal(c.items.filter((i) => i.kind === 'scale').length, 0);
+  // the rain is already falling, not still on its way down
+  const seeded = c.items.filter((i) => i.kind === 'snack');
+  assert.ok(seeded.length >= 40);
+  assert.ok(seeded.some((i) => i.y > 300));
+  assert.equal(new Set(seeded.map((i) => i.x)).size, 5);
 
   // rocks stop spawning and stop hurting while it lasts
   c.spawn = 0;
   stepGame(c, 0.016, 0, null, () => 0.5);
   assert.equal(c.items.filter((i) => i.kind === 'rock').length, 0);
-  assert.equal(c.items.filter((i) => i.kind === 'snack').length, 5);
+  assert.ok(c.items.filter((i) => i.kind === 'snack').length >= 20);
   c.items = [{ kind: 'rock', x: c.x, y: PLAYER_Y, size: 85, angle: 0 }];
   assert.equal(stepGame(c, 0.016, 0, null).hit, false);
   assert.equal(c.mode, 'playing');

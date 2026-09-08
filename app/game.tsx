@@ -51,7 +51,8 @@ export default function GamePanel() {
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(false),
-    [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
+    [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]),
+    [shot, setShot] = useState<{ url: string; touch: boolean } | null>(null);
   // A bite is broadband and gone in a moment, so the snack is a burst of
   // filtered noise rather than a tone. Two of them, a beat apart, give サクッ
   // its two syllables. The band climbs with the chain, keeping the multiplier
@@ -141,6 +142,7 @@ export default function GamePanel() {
     game.current = startGame();
     keys.current.clear();
     target.current = null;
+    closeShot();
     setScore(0);
     setEaten(0);
     setMode('playing');
@@ -587,16 +589,26 @@ export default function GamePanel() {
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
   }, [mode]);
+  function closeShot() {
+    setShot((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return null;
+    });
+  }
+  // A download link opens the picture as a page on a phone, leaving the player
+  // to work out that a long press saves it. Showing it in the card instead
+  // makes the picture and the way to keep it plain at a glance.
   function saveResultCard() {
     const sheet = buildResultCard();
     sheet?.toBlob((blob) => {
       if (!blob) return;
-      const href = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = href;
-      link.download = `しるこさんぽ-${score}pt.png`;
-      link.click();
-      URL.revokeObjectURL(href);
+      setShot((current) => {
+        if (current) URL.revokeObjectURL(current.url);
+        return {
+          url: URL.createObjectURL(blob),
+          touch: window.matchMedia('(hover: none)').matches,
+        };
+      });
     }, 'image/png');
   }
   function point(e: React.PointerEvent<HTMLDivElement>) {
@@ -716,7 +728,37 @@ export default function GamePanel() {
             <span className="start-hint">Space / Esc キーでも再開</span>
           </div>
         )}
-        {mode === 'over' && (
+        {mode === 'over' && shot && (
+          <div className="start-card over-card">
+            <span className="tiny-caps">SAVE</span>
+            {/* eslint-disable-next-line next/no-img-element -- a blob
+                made a moment ago, with nothing for a loader to do */}
+            <img className="result-shot" src={shot.url} alt="リザルト画像" />
+            <p className="shot-hint">
+              {shot.touch
+                ? '画像を長押しして「写真に保存」'
+                : '画像を右クリックで保存できます'}
+            </p>
+            {!shot.touch && (
+              <a
+                className="save-button"
+                href={shot.url}
+                download={`しるこさんぽ-${score}pt.png`}
+              >
+                <Download size={17} />
+                ダウンロード
+              </a>
+            )}
+            <button
+              ref={primary}
+              className="primary-button"
+              onClick={closeShot}
+            >
+              とじる
+            </button>
+          </div>
+        )}
+        {mode === 'over' && !shot && (
           <div className="start-card over-card">
             <span className="tiny-caps">GAME OVER</span>
             <h2 className="game-over-line">{gameOverLine}</h2>
