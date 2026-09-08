@@ -147,6 +147,9 @@ button:disabled {
   overflow: hidden;
   background: #0b3142;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .cave-light {
   position: absolute;
@@ -168,8 +171,7 @@ button:disabled {
   z-index: 0;
 }
 .playfield .start-card,
-.playfield .darkness,
-.playfield .mobile-controls {
+.playfield .darkness {
   z-index: 4;
 }
 .start-card {
@@ -452,9 +454,6 @@ canvas {
 .over-card {
   animation: appear 0.5s;
 }
-.mobile-controls {
-  display: none;
-}
 /* The result card lists how many biscuits the run collected. */
 .eaten-line {
   margin: -6px 0 4px;
@@ -553,28 +552,6 @@ canvas {
     font-size: 12px;
     padding-top: 8px;
   }
-  .mobile-controls {
-    display: flex;
-    position: absolute;
-    bottom: 14px;
-    left: 17px;
-    right: 17px;
-    justify-content: space-between;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .mobile-controls button {
-    pointer-events: auto;
-    border: 1px solid #fff9;
-    background: #ffffff42;
-    border-radius: 50%;
-    width: 49px;
-    height: 49px;
-    color: #18536a;
-    display: grid;
-    place-items: center;
-    touch-action: none;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -666,5 +643,66 @@ canvas {
   }
   .start-card .tiny-caps {
     font-size: 11px;
+  }
+}
+/* The result card carries more than the start card — a line, a score, a count
+   and three buttons — so it keeps a tighter rhythm and stays inside the field.
+   These come last so the short-height rules above cannot outrank them. */
+.over-card {
+  padding: 22px 20px 24px;
+}
+.over-card .game-over-line {
+  min-height: 2.2em;
+  margin-bottom: 2px;
+}
+.over-card .score-result {
+  margin: 6px 0 2px;
+}
+.over-card .eaten-line {
+  margin: 0 0 15px;
+}
+.over-card .share-button {
+  margin-bottom: 8px;
+}
+.over-card .save-button {
+  margin-bottom: 12px;
+}
+@media (max-height: 760px) {
+  .over-card {
+    padding: 16px 16px 18px;
+  }
+  .over-card .score-result {
+    margin: 2px 0 0;
+  }
+  .over-card .eaten-line {
+    margin: 0 0 11px;
+  }
+  .over-card .save-button {
+    margin-bottom: 9px;
+  }
+}
+@media (max-height: 620px) {
+  .over-card {
+    padding: 12px 14px 14px;
+  }
+  .over-card .game-over-line {
+    min-height: 1.6em;
+  }
+  .over-card .score-result {
+    margin: 0;
+  }
+  .over-card .eaten-line {
+    margin: 0 0 8px;
+  }
+  .over-card .share-button {
+    min-height: 40px;
+    margin-bottom: 6px;
+  }
+  .over-card .save-button {
+    min-height: 36px;
+    margin-bottom: 7px;
+  }
+  .over-card .primary-button {
+    min-height: 44px;
   }
 }

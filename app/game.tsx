@@ -1,7 +1,5 @@
 'use client';
 import {
-  ArrowLeft,
-  ArrowRight,
   Download,
   Pause,
   Play,
@@ -37,7 +35,6 @@ export default function GamePanel() {
     game = useRef(newGame()),
     keys = useRef(new Set<string>()),
     target = useRef<number | null>(null),
-    held = useRef(0),
     sprite = useRef<HTMLImageElement | null>(null),
     mermaid = useRef<HTMLImageElement | null>(null),
     rock = useRef<HTMLImageElement | null>(null),
@@ -47,8 +44,7 @@ export default function GamePanel() {
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     lastGameOverLine = useRef(0),
-    primary = useRef<HTMLButtonElement>(null),
-    resultImage = useRef<File | null>(null);
+    primary = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>('ready'),
     [score, setScore] = useState(0),
     [eaten, setEaten] = useState(0),
@@ -90,7 +86,6 @@ export default function GamePanel() {
     if (overTimer.current) clearTimeout(overTimer.current);
     game.current = startGame();
     keys.current.clear();
-    held.current = 0;
     target.current = null;
     setScore(0);
     setEaten(0);
@@ -103,7 +98,6 @@ export default function GamePanel() {
       g.mode = 'paused';
       setMode('paused');
       keys.current.clear();
-      held.current = 0;
       target.current = null;
     } else if (g.mode === 'paused') {
       g.mode = 'playing';
@@ -165,7 +159,6 @@ export default function GamePanel() {
     const up = (e: KeyboardEvent) => keys.current.delete(e.key.toLowerCase());
     const blur = () => {
       keys.current.clear();
-      held.current = 0;
       target.current = null;
       if (game.current.mode === 'playing') {
         game.current.mode = 'paused';
@@ -188,8 +181,7 @@ export default function GamePanel() {
       const g = game.current;
       const direction =
         (keys.current.has('arrowright') || keys.current.has('d') ? 1 : 0) -
-          (keys.current.has('arrowleft') || keys.current.has('a') ? 1 : 0) ||
-        held.current;
+        (keys.current.has('arrowleft') || keys.current.has('a') ? 1 : 0);
       const result = stepGame(g, dt, direction, target.current);
       if (result.ate) {
         const step = g.fever > 0 ? MAX_MULTIPLIER : getMultiplier(g.combo);
@@ -208,7 +200,6 @@ export default function GamePanel() {
         setGameOverLine(GAME_OVER_LINES[lineIndex]);
         setMode('crashed');
         keys.current.clear();
-        held.current = 0;
         target.current = null;
         overTimer.current = setTimeout(() => {
           g.mode = 'over';
@@ -483,23 +474,8 @@ export default function GamePanel() {
     here.searchParams.set('v', SHARE_VERSION);
     return here.toString();
   }
-  async function shareScoreOnX() {
+  function shareScoreOnX() {
     const line = `しるこさんぽで ${score}pt！しるこサンドを ${eaten} 枚たべました。`;
-    const file = resultImage.current;
-    // X's post intent cannot carry an image, but a share sheet can, so the
-    // card travels with the post wherever the browser supports it.
-    if (file && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({
-          text: `${line}\n${shareUrl()}`,
-          files: [file],
-        });
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError')
-          return;
-      }
-    }
     const params = new URLSearchParams({
       text: `${line}\n岩をよけて、しるこサンドを集めよう。`,
       url: shareUrl(),
@@ -514,19 +490,6 @@ export default function GamePanel() {
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
   }, [mode]);
-  useEffect(() => {
-    // Sharing must run inside the click, so the file is ready beforehand.
-    if (mode !== 'over') return;
-    resultImage.current = null;
-    const sheet = buildResultCard();
-    sheet?.toBlob((blob) => {
-      if (blob) {
-        resultImage.current = new File([blob], 'shirukosanpo.png', {
-          type: 'image/png',
-        });
-      }
-    }, 'image/png');
-  }, [mode, buildResultCard]);
   function saveResultCard() {
     const sheet = buildResultCard();
     sheet?.toBlob((blob) => {
@@ -551,7 +514,6 @@ export default function GamePanel() {
   }
   const release = () => {
     target.current = null;
-    held.current = 0;
   };
   return (
     <section className="game-shell" aria-label="しるこさんぽ">
@@ -682,27 +644,6 @@ export default function GamePanel() {
               <RotateCcw size={18} />
               もういちどすすむ
             </button>
-          </div>
-        )}
-        {mode === 'playing' && (
-          <div className="mobile-controls">
-            {[-1, 1].map((d) => (
-              <button
-                key={d}
-                aria-label={d === -1 ? '左へ移動' : '右へ移動'}
-                onPointerDown={(e) => {
-                  e.stopPropagation();
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                  held.current = d;
-                  target.current = null;
-                }}
-                onPointerUp={release}
-                onPointerCancel={release}
-                onLostPointerCapture={release}
-              >
-                {d === -1 ? <ArrowLeft /> : <ArrowRight />}
-              </button>
-            ))}
           </div>
         )}
       </div>
