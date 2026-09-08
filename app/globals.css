@@ -444,6 +444,11 @@ canvas {
   border: 2px solid #2b5a68;
   border-radius: 10px;
   margin: 10px 0 9px;
+  /* The playfield turns these off so a drag across it cannot select or call
+     out; the saved picture needs both back or a long press does nothing. */
+  -webkit-touch-callout: default;
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 .shot-hint {
   font-size: 13px;

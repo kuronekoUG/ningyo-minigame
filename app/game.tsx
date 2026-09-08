@@ -52,7 +52,11 @@ export default function GamePanel() {
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(false),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]),
-    [shot, setShot] = useState<{ url: string; touch: boolean } | null>(null);
+    [shot, setShot] = useState<{
+      url: string;
+      file: File;
+      touch: boolean;
+    } | null>(null);
   // A bite is broadband and gone in a moment, so the snack is a burst of
   // filtered noise rather than a tone. Two of them, a beat apart, give サクッ
   // its two syllables. The band climbs with the chain, keeping the multiplier
@@ -91,22 +95,21 @@ export default function GamePanel() {
     source.start(start);
     source.stop(start + length + 0.01);
   }
-  // The band rises a step per snack in the chain, so a run reads as a climbing
-  // phrase rather than the same bite over and over. Ten of them reach an
-  // octave, and it holds there rather than turning shrill.
-  function crunch(a: AudioContext, chain: number) {
-    const centre = 2000 * Math.pow(2, Math.min(chain, 10) / 10);
+  // One pitch, a little under where it started: the climbing version made a
+  // run musical but a bite is a bite.
+  function crunch(a: AudioContext) {
+    const centre = 1800;
     burst(a, centre, 0, 0.5, 0.075);
     burst(a, centre * 0.72, 0.026, 0.26, 0.06);
   }
-  function tone(kind: 'snack' | 'hit' | 'fever' = 'snack', step = 0) {
+  function tone(kind: 'snack' | 'hit' | 'fever' = 'snack') {
     if (!sound.current) return;
     try {
       audio.current ??= new AudioContext();
       void audio.current.resume();
       const a = audio.current;
       if (kind === 'snack') {
-        crunch(a, step);
+        crunch(a);
         return;
       }
       const osc = a.createOscillator(),
@@ -280,7 +283,7 @@ export default function GamePanel() {
       if (result.ate) {
         setScore(g.score);
         setEaten(g.eaten);
-        tone('snack', g.combo - 1);
+        tone('snack');
       }
       if (result.feverStarted) tone('fever');
       if (result.hit) {
@@ -586,6 +589,15 @@ export default function GamePanel() {
       'noopener,noreferrer,width=620,height=720',
     );
   }
+  // An in-app browser can swallow the long press altogether, so where the
+  // platform offers a save sheet the picture goes through that instead.
+  function offerShot(file: File) {
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        void navigator.share({ files: [file] });
+      }
+    } catch {}
+  }
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
   }, [mode]);
@@ -606,6 +618,9 @@ export default function GamePanel() {
         if (current) URL.revokeObjectURL(current.url);
         return {
           url: URL.createObjectURL(blob),
+          file: new File([blob], `しるこさんぽ-${score}pt.png`, {
+            type: 'image/png',
+          }),
           touch: window.matchMedia('(hover: none)').matches,
         };
       });
@@ -736,10 +751,18 @@ export default function GamePanel() {
             <img className="result-shot" src={shot.url} alt="リザルト画像" />
             <p className="shot-hint">
               {shot.touch
-                ? '画像を長押しして「写真に保存」'
-                : '画像を右クリックで保存できます'}
+                ? '長押し、または下のボタンで保存'
+                : '右クリックか、下のボタンで保存'}
             </p>
-            {!shot.touch && (
+            {shot.touch ? (
+              <button
+                className="save-button"
+                onClick={() => offerShot(shot.file)}
+              >
+                <Download size={17} />
+                保存する
+              </button>
+            ) : (
               <a
                 className="save-button"
                 href={shot.url}
