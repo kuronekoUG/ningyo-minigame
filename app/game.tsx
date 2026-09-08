@@ -52,22 +52,65 @@ export default function GamePanel() {
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(true),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
+  // A bite is broadband and gone in a moment, so the snack is a burst of
+  // filtered noise rather than a tone. Two of them, a beat apart, give サクッ
+  // its two syllables. The band climbs with the chain, keeping the multiplier
+  // audible the way the old pitch was.
+  function burst(
+    a: AudioContext,
+    centre: number,
+    at: number,
+    level: number,
+    length: number,
+  ) {
+    const start = a.currentTime + at;
+    const frames = Math.floor(a.sampleRate * length);
+    const buffer = a.createBuffer(1, frames, a.sampleRate);
+    const samples = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) {
+      // Thinning the noise across the burst reads as a snap, not a hiss.
+      const fade = 1 - i / frames;
+      samples[i] = (Math.random() * 2 - 1) * fade * fade;
+    }
+    const source = a.createBufferSource();
+    source.buffer = buffer;
+    const band = a.createBiquadFilter();
+    band.type = 'bandpass';
+    band.Q.value = 0.9;
+    // A real crunch darkens as it collapses, so the band falls with it.
+    band.frequency.setValueAtTime(centre, start);
+    band.frequency.exponentialRampToValueAtTime(centre * 0.5, start + length);
+    const gain = a.createGain();
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(level, start + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + length);
+    source.connect(band);
+    band.connect(gain);
+    gain.connect(a.destination);
+    source.start(start);
+    source.stop(start + length + 0.01);
+  }
+  function crunch(a: AudioContext, step: number) {
+    const centre = 2000 + step * 280;
+    burst(a, centre, 0, 0.5, 0.075);
+    burst(a, centre * 0.72, 0.026, 0.26, 0.06);
+  }
   function tone(kind: 'snack' | 'hit' | 'fever' = 'snack', step = 0) {
     if (!sound.current) return;
     try {
       audio.current ??= new AudioContext();
       void audio.current.resume();
-      const a = audio.current,
-        osc = a.createOscillator(),
+      const a = audio.current;
+      if (kind === 'snack') {
+        crunch(a, step);
+        return;
+      }
+      const osc = a.createOscillator(),
         gain = a.createGain();
-      // The chain climbs in pitch, so a long one is audible as well as visible.
-      const from =
-        kind === 'hit' ? 110 : kind === 'fever' ? 520 : 660 + step * 95;
-      const to =
-        kind === 'hit' ? 30 : kind === 'fever' ? 1560 : 1080 + step * 150;
+      const from = kind === 'hit' ? 110 : 520;
+      const to = kind === 'hit' ? 30 : 1560;
       const length = kind === 'fever' ? 0.42 : 0.22;
-      osc.type =
-        kind === 'hit' ? 'triangle' : kind === 'fever' ? 'square' : 'sine';
+      osc.type = kind === 'hit' ? 'triangle' : 'square';
       osc.frequency.setValueAtTime(from, a.currentTime);
       osc.frequency.exponentialRampToValueAtTime(
         to,
