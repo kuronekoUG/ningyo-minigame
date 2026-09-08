@@ -26,6 +26,10 @@ import {
 import { GAME_OVER_LINES } from './game-over-lines';
 import { withBase } from './base-path';
 
+// X caches a card against the URL it crawled, so a share carries a version the
+// crawler has not seen. Bump it whenever the card art changes.
+const SHARE_VERSION = '2';
+
 export default function GamePanel() {
   const canvas = useRef<HTMLCanvasElement>(null),
     field = useRef<HTMLDivElement>(null),
@@ -382,10 +386,15 @@ export default function GamePanel() {
       void audio.current?.close();
     };
   }, []);
+  function shareUrl() {
+    const here = new URL(window.location.href);
+    here.searchParams.set('v', SHARE_VERSION);
+    return here.toString();
+  }
   function shareScoreOnX() {
     const params = new URLSearchParams({
       text: `しるこさんぽで ${score}pt！しるこサンドを ${eaten} 枚たべました。\n岩をよけて、しるこサンドを集めよう。`,
-      url: window.location.href,
+      url: shareUrl(),
       hashtags: 'しるこさんぽ',
     });
     window.open(
