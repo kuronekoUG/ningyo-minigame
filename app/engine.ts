@@ -71,20 +71,24 @@ export function getScrollSpeed(time: number) {
   const currentMaximum = 145 + Math.min(time * 7.2, 305);
   const lateStage = Math.min(Math.max(time - 45, 0) * 4, 70);
   const finalStage = Math.min(Math.max(time - 60, 0) * 5, 80);
-  return currentMaximum + lateStage + finalStage;
+  // A fourth stage, so a long run keeps climbing instead of levelling at 80s.
+  const deepStage = Math.min(Math.max(time - 80, 0) * 4.5, 70);
+  return currentMaximum + lateStage + finalStage + deepStage;
 }
 
 export function getSpawnInterval(time: number) {
   const currentInterval = Math.max(0.68, 1.28 - time * 0.01);
   const lateStage = Math.min(Math.max(time - 45, 0) * 0.01, 0.12);
   const finalStage = Math.min(Math.max(time - 60, 0) * 0.01, 0.12);
-  return Math.max(0.44, currentInterval - lateStage - finalStage);
+  const deepStage = Math.min(Math.max(time - 80, 0) * 0.01, 0.08);
+  return Math.max(0.36, currentInterval - lateStage - finalStage - deepStage);
 }
 
 export function getRockCount(time: number) {
   if (time < 14) return 1;
   if (time < 34) return 2;
-  return 3;
+  if (time < 80) return 3;
+  return 4;
 }
 export const SNACK_COUNT = 4;
 // A steady four, however many rocks are out — so the crunching never thins.

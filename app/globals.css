@@ -438,6 +438,21 @@ canvas {
 .save-button:hover {
   background: #2b5a681a;
 }
+.best-line {
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin: -6px 0 12px;
+  opacity: 0.7;
+}
+.best-line strong {
+  font-size: 15px;
+}
+@media (max-height: 620px) {
+  .best-line {
+    font-size: 11px;
+    margin: -6px 0 5px;
+  }
+}
 .result-shot {
   display: block;
   width: 100%;
@@ -647,7 +662,7 @@ a.save-button {
     min-height: 46px;
   }
   .score-result strong {
-    font-size: 46px;
+    font-size: 40px;
   }
 }
 @media (max-height: 620px) {
@@ -673,7 +688,7 @@ a.save-button {
     font-size: 16px;
   }
   .score-result strong {
-    font-size: 38px;
+    font-size: 34px;
   }
 }
 /* On a phone the card is narrow enough that 16px copy breaks mid-phrase. */
@@ -716,13 +731,16 @@ a.save-button {
 }
 @media (max-height: 760px) {
   .over-card {
-    padding: 16px 16px 18px;
+    padding: 14px 16px 16px;
   }
   .over-card .score-result {
     margin: 2px 0 0;
   }
   .over-card .eaten-line {
-    margin: 0 0 11px;
+    margin: 0 0 6px;
+  }
+  .best-line {
+    margin: -6px 0 8px;
   }
   .over-card .save-button {
     margin-bottom: 9px;
@@ -730,7 +748,7 @@ a.save-button {
 }
 @media (max-height: 620px) {
   .over-card {
-    padding: 12px 14px 14px;
+    padding: 10px 14px 12px;
   }
   .over-card .game-over-line {
     min-height: 1.4em;
@@ -739,15 +757,15 @@ a.save-button {
     margin: 0;
   }
   .over-card .eaten-line {
-    margin: 0 0 8px;
+    margin: 0 0 3px;
   }
   .over-card .share-button {
-    min-height: 40px;
-    margin-bottom: 6px;
+    min-height: 39px;
+    margin-bottom: 5px;
   }
   .over-card .save-button {
-    min-height: 36px;
-    margin-bottom: 7px;
+    min-height: 35px;
+    margin-bottom: 6px;
   }
   .over-card .primary-button {
     min-height: 44px;

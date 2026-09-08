@@ -25,6 +25,28 @@ import {
 import { GAME_OVER_LINES } from './game-over-lines';
 import { withBase } from './base-path';
 
+const BEST_KEY = 'shirukosanpo.best';
+type Best = { score: number; eaten: number };
+// The run has to be worth comparing to something, and there is no server to
+// compare against. Reading can throw in a private window, so it is guarded.
+function readBest(): Best {
+  try {
+    const stored = localStorage.getItem(BEST_KEY);
+    if (stored) {
+      const value = JSON.parse(stored) as Partial<Best>;
+      if (typeof value.score === 'number' && typeof value.eaten === 'number') {
+        return { score: value.score, eaten: value.eaten };
+      }
+    }
+  } catch {}
+  return { score: 0, eaten: 0 };
+}
+function writeBest(best: Best) {
+  try {
+    localStorage.setItem(BEST_KEY, JSON.stringify(best));
+  } catch {}
+}
+
 // X caches a card against the URL it crawled, so a share carries a version the
 // crawler has not seen. Bump it whenever the card art changes.
 const SHARE_VERSION = '2';
@@ -52,6 +74,8 @@ export default function GamePanel() {
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(false),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]),
+    [best, setBest] = useState<Best>({ score: 0, eaten: 0 }),
+    [beatBest, setBeatBest] = useState(false),
     [shot, setShot] = useState<{
       url: string;
       file: File;
@@ -146,6 +170,7 @@ export default function GamePanel() {
     keys.current.clear();
     target.current = null;
     closeShot();
+    setBeatBest(false);
     setScore(0);
     setEaten(0);
     setMode('playing');
@@ -228,6 +253,10 @@ export default function GamePanel() {
         `${appliedHeight}px`,
       );
     };
+    // Reading a stored best on mount is exactly what an effect is for; it
+    // cannot be an initial value because this page is prerendered.
+    // eslint-disable-next-line react/react-compiler
+    setBest(readBest());
     measure();
     const settle = [
       setTimeout(measure, 250),
@@ -300,6 +329,15 @@ export default function GamePanel() {
         overTimer.current = setTimeout(() => {
           g.mode = 'over';
           setMode('over');
+          const previous = readBest();
+          const beaten = g.score > previous.score;
+          setBeatBest(beaten);
+          const next = {
+            score: Math.max(previous.score, g.score),
+            eaten: Math.max(previous.eaten, g.eaten),
+          };
+          setBest(next);
+          if (beaten || next.eaten !== previous.eaten) writeBest(next);
         }, 1050);
       }
       const ctx = canvas.current?.getContext('2d');
@@ -727,7 +765,14 @@ export default function GamePanel() {
             {assetError ? (
               <p>ページを再読み込みしてください。</p>
             ) : (
-              <span className="start-hint">← → で移動・スマホはスワイプ</span>
+              <>
+                {best.score > 0 && (
+                  <p className="best-line">
+                    自己ベスト <strong>{best.score}</strong> pt
+                  </p>
+                )}
+                <span className="start-hint">← → で移動・スマホはスワイプ</span>
+              </>
             )}
           </div>
         )}
@@ -783,7 +828,9 @@ export default function GamePanel() {
         )}
         {mode === 'over' && !shot && (
           <div className="start-card over-card">
-            <span className="tiny-caps">GAME OVER</span>
+            <span className="tiny-caps">
+              {beatBest && best.score > 0 ? '自己ベスト更新！' : 'GAME OVER'}
+            </span>
             <h2 className="game-over-line">{gameOverLine}</h2>
             <div className="score-result">
               <strong>{score}</strong>
@@ -792,6 +839,15 @@ export default function GamePanel() {
             <p className="eaten-line">
               しるこサンド <strong>{eaten}</strong> 枚
             </p>
+            {best.score > 0 && (
+              <p className="best-line">
+                {beatBest
+                  ? `これまでのベスト ${best.score} pt`
+                  : score === best.score
+                    ? '自己ベストに並んだ'
+                    : `ベストまで あと ${best.score - score} pt`}
+              </p>
+            )}
             <button className="share-button" onClick={shareScoreOnX}>
               <span className="x-mark" aria-hidden="true">
                 X
