@@ -5,7 +5,9 @@ import { BASE_PATH } from './base-path';
 const SITE_ORIGIN = 'https://kuronekoug.github.io';
 // Pages serves the game under a base path, so card URLs are built by hand.
 const SITE_URL = `${SITE_ORIGIN}${BASE_PATH}/`;
-const OG_IMAGE = `${SITE_ORIGIN}${BASE_PATH}/og.jpg`;
+// X caches a card against the image URL, so a redrawn card needs a new name
+// for the crawler to fetch it rather than serve the copy it already holds.
+const OG_IMAGE = `${SITE_ORIGIN}${BASE_PATH}/og-2.jpg`;
 const TITLE = 'しるこさんぽ';
 const DESCRIPTION =
   '岩をよけて、しるこサンドをぱくっ。洞窟を進む縦スクロールの非公式ファンゲーム。キーボードとスマホに対応。';
