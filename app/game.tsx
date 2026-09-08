@@ -45,6 +45,7 @@ export default function GamePanel() {
     primary = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<Mode>('ready'),
     [score, setScore] = useState(0),
+    [eaten, setEaten] = useState(0),
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
     [muted, setMuted] = useState(true),
@@ -86,6 +87,7 @@ export default function GamePanel() {
     held.current = 0;
     target.current = null;
     setScore(0);
+    setEaten(0);
     setMode('playing');
     field.current?.focus();
   }
@@ -186,6 +188,7 @@ export default function GamePanel() {
       if (result.ate) {
         const step = g.fever > 0 ? MAX_MULTIPLIER : getMultiplier(g.combo);
         setScore(g.score);
+        setEaten(g.eaten);
         tone('snack', step - 1);
       }
       if (result.feverStarted) tone('fever');
@@ -381,7 +384,7 @@ export default function GamePanel() {
   }, []);
   function shareScoreOnX() {
     const params = new URLSearchParams({
-      text: `しるこさんぽで ${score}pt！\n岩をよけて、しるこサンドを集めよう。`,
+      text: `しるこさんぽで ${score}pt！しるこサンドを ${eaten} 枚たべました。\n岩をよけて、しるこサンドを集めよう。`,
       url: window.location.href,
       hashtags: 'しるこさんぽ',
     });
@@ -396,8 +399,13 @@ export default function GamePanel() {
   }, [mode]);
   function point(e: React.PointerEvent<HTMLDivElement>) {
     if (game.current.mode !== 'playing') return;
-    const box = e.currentTarget.getBoundingClientRect();
-    target.current = ((e.clientX - box.left) / box.width) * WIDTH;
+    // The canvas is letterboxed to keep its proportions, so the pointer maps
+    // against the painted area rather than the element box.
+    const box = canvas.current?.getBoundingClientRect();
+    if (!box) return;
+    const painted = WIDTH * Math.min(box.width / WIDTH, box.height / HEIGHT);
+    const left = box.left + (box.width - painted) / 2;
+    target.current = ((e.clientX - left) / painted) * WIDTH;
   }
   const release = () => {
     target.current = null;
@@ -515,6 +523,9 @@ export default function GamePanel() {
               <strong>{score}</strong>
               <span>pt</span>
             </div>
+            <p className="eaten-line">
+              しるこサンド <strong>{eaten}</strong> 枚
+            </p>
             <button className="share-button" onClick={shareScoreOnX}>
               <span className="x-mark" aria-hidden="true">
                 X
@@ -564,7 +575,7 @@ export default function GamePanel() {
       </div>
       <output className="sr-only" aria-live="polite">
         {mode === 'over'
-          ? `ゲームオーバー。${score}点。`
+          ? `ゲームオーバー。${score}点。しるこサンド${eaten}枚。`
           : mode === 'paused'
             ? '一時停止中'
             : ''}
