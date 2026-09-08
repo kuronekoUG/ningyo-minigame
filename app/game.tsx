@@ -194,6 +194,33 @@ export default function GamePanel() {
     rockImage.src = withBase('/rock-rough.png');
     caveImage.src = withBase('/cave-rough.jpg');
     scaleImage.src = withBase('/scale.png');
+    // An in-app browser can report svh wrong on a cold start and only settle a
+    // moment later, which sized the whole page to a viewport that was never
+    // there. Measure it instead, take the smaller of the two readings, and keep
+    // measuring: the layout then corrects itself in place rather than needing
+    // the player to come back a few times.
+    const measure = () => {
+      const height = Math.min(
+        window.innerHeight,
+        window.visualViewport?.height ?? Infinity,
+      );
+      if (height > 0) {
+        document.documentElement.style.setProperty(
+          '--app-height',
+          `${Math.round(height)}px`,
+        );
+      }
+    };
+    measure();
+    const settle = [
+      setTimeout(measure, 250),
+      setTimeout(measure, 800),
+      setTimeout(measure, 2000),
+    ];
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    window.addEventListener('pageshow', measure);
+    window.visualViewport?.addEventListener('resize', measure);
     const down = (e: KeyboardEvent) => {
       if (['ArrowLeft', 'ArrowRight', 'a', 'A', 'd', 'D'].includes(e.key)) {
         if (game.current.mode === 'playing') e.preventDefault();
@@ -417,6 +444,11 @@ export default function GamePanel() {
     return () => {
       cancelAnimationFrame(frame);
       if (overTimer.current) clearTimeout(overTimer.current);
+      for (const timer of settle) clearTimeout(timer);
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      window.removeEventListener('pageshow', measure);
+      window.visualViewport?.removeEventListener('resize', measure);
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', blur);
