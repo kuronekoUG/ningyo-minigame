@@ -47,10 +47,9 @@ button:disabled {
   opacity: 0.7;
 }
 .cave-page {
-  height: 100svh;
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   background:
     radial-gradient(ellipse at 68% 42%, #1f6b7840, transparent 42%),
     linear-gradient(125deg, #061522, #0d2c3b 54%, #071824);
@@ -142,6 +141,7 @@ button:disabled {
 .playfield {
   flex: 0 1 auto;
   aspect-ratio: 3 / 4;
+  max-height: 60svh;
   min-height: 0;
   position: relative;
   overflow: hidden;
@@ -245,6 +245,14 @@ button:disabled {
   padding: 0 21px;
   font-size: 12px;
   border-top: 2px solid #295568;
+}
+.rights-link {
+  color: #3d7a86;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.rights-link:hover {
+  color: #1f5a66;
 }
 .live-dot {
   display: inline-block;
@@ -474,6 +482,11 @@ canvas {
 /* X's in-app browser keeps a bar over the foot of the page, so the game sits
    higher and leaves that space clear. */
 @media (max-width: 720px) {
+  /* An in-app browser reports more height than it shows, so the field is held
+     well inside the reported viewport and the game lands above the fold. */
+  .playfield {
+    max-height: 49svh;
+  }
   .game-layout {
     margin-top: clamp(4px, 1svh, 14px);
   }

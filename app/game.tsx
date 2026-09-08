@@ -658,7 +658,15 @@ export default function GamePanel() {
                 ? 'ひとやすみ中'
                 : '気づかれないように…'}
         </span>
-        <span>{mode === 'playing' ? '← → / なぞって移動' : '岩に注意！'}</span>
+        {mode === 'playing' ? (
+          <span>なぞって移動</span>
+        ) : (
+          // The footer can fall below the fold in an in-app browser, so the
+          // rights notice also lives here, inside the shell.
+          <a className="rights-link" href={withBase('/terms')}>
+            このゲームについて
+          </a>
+        )}
       </div>
       <output className="sr-only" aria-live="polite">
         {mode === 'over'
