@@ -140,6 +140,10 @@ button:disabled {
 }
 .playfield {
   flex: 0 1 auto;
+  /* WebKit derives the width from the height for a flex child with an aspect
+     ratio, which left the field narrower than its shell. A definite width
+     keeps the ratio driving the height, the way round it is meant to. */
+  width: 100%;
   aspect-ratio: 3 / 4;
   max-height: 60svh;
   min-height: 0;

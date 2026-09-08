@@ -217,14 +217,16 @@ export default function GamePanel() {
         }
         if (cave.current) {
           for (let tile = -2; tile <= 1; tile++) {
-            const y = tile * HEIGHT + backgroundOffset;
+            // Rounded and overlapped by a pixel: a fractional offset used to
+            // leave a hairline of bare canvas between the tiles.
+            const y = Math.round(tile * HEIGHT + backgroundOffset);
             if (tile % 2 === 0) {
-              ctx.drawImage(cave.current, 0, y, WIDTH, HEIGHT);
+              ctx.drawImage(cave.current, 0, y, WIDTH, HEIGHT + 1);
             } else {
               ctx.save();
-              ctx.translate(0, y + HEIGHT);
+              ctx.translate(0, y + HEIGHT + 1);
               ctx.scale(1, -1);
-              ctx.drawImage(cave.current, 0, 0, WIDTH, HEIGHT);
+              ctx.drawImage(cave.current, 0, 0, WIDTH, HEIGHT + 1);
               ctx.restore();
             }
           }
