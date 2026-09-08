@@ -90,8 +90,11 @@ export default function GamePanel() {
     source.start(start);
     source.stop(start + length + 0.01);
   }
-  function crunch(a: AudioContext, step: number) {
-    const centre = 2000 + step * 280;
+  // The band rises a step per snack in the chain, so a run reads as a climbing
+  // phrase rather than the same bite over and over. Ten of them reach an
+  // octave, and it holds there rather than turning shrill.
+  function crunch(a: AudioContext, chain: number) {
+    const centre = 2000 * Math.pow(2, Math.min(chain, 10) / 10);
     burst(a, centre, 0, 0.5, 0.075);
     burst(a, centre * 0.72, 0.026, 0.26, 0.06);
   }
@@ -235,10 +238,9 @@ export default function GamePanel() {
         (keys.current.has('arrowleft') || keys.current.has('a') ? 1 : 0);
       const result = stepGame(g, dt, direction, target.current);
       if (result.ate) {
-        const step = g.fever > 0 ? MAX_MULTIPLIER : getMultiplier(g.combo);
         setScore(g.score);
         setEaten(g.eaten);
-        tone('snack', step - 1);
+        tone('snack', g.combo - 1);
       }
       if (result.feverStarted) tone('fever');
       if (result.hit) {
