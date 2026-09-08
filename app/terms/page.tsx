@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { withBase } from '../base-path';
 
 export const metadata: Metadata = {
@@ -88,7 +87,7 @@ export default function Terms() {
         </p>
 
         <p className="doc-back">
-          <Link href={withBase('/')}>← ゲームにもどる</Link>
+          <a href={withBase('/')}>← ゲームにもどる</a>
         </p>
       </article>
     </main>
