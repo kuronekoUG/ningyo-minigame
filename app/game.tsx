@@ -90,25 +90,6 @@ export default function GamePanel() {
     source.start(start);
     source.stop(start + length + 0.01);
   }
-  // Stone is a crack over a low body. The old crash swept down to 30Hz, which
-  // a phone speaker cannot reproduce, so it read as no sound at all; this one
-  // keeps its weight where a small speaker can actually deliver it.
-  function thud(a: AudioContext) {
-    burst(a, 1300, 0, 0.4, 0.085);
-    burst(a, 520, 0.012, 0.3, 0.16);
-    const osc = a.createOscillator(),
-      gain = a.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(250, a.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(95, a.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.0001, a.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.3, a.currentTime + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.34);
-    osc.connect(gain);
-    gain.connect(a.destination);
-    osc.start();
-    osc.stop(a.currentTime + 0.36);
-  }
   function crunch(a: AudioContext, step: number) {
     const centre = 2000 + step * 280;
     burst(a, centre, 0, 0.5, 0.075);
@@ -124,20 +105,18 @@ export default function GamePanel() {
         crunch(a, step);
         return;
       }
-      if (kind === 'hit') {
-        thud(a);
-        return;
-      }
       const osc = a.createOscillator(),
         gain = a.createGain();
-      const length = 0.42;
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(520, a.currentTime);
+      const hit = kind === 'hit';
+      const length = hit ? 0.22 : 0.42;
+      osc.type = hit ? 'triangle' : 'square';
+      osc.frequency.setValueAtTime(hit ? 110 : 520, a.currentTime);
       osc.frequency.exponentialRampToValueAtTime(
-        1560,
+        hit ? 30 : 1560,
         a.currentTime + length * 0.6,
       );
-      gain.gain.setValueAtTime(0.06, a.currentTime);
+      // The crash carried at 0.085, under the crunch it is meant to interrupt.
+      gain.gain.setValueAtTime(hit ? 0.26 : 0.06, a.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + length);
       osc.connect(gain);
       gain.connect(a.destination);
