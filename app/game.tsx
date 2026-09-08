@@ -40,7 +40,7 @@ export default function GamePanel() {
     rock = useRef<HTMLImageElement | null>(null),
     scale = useRef<HTMLImageElement | null>(null),
     cave = useRef<HTMLImageElement | null>(null),
-    sound = useRef(false),
+    sound = useRef(true),
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     lastGameOverLine = useRef(0),
@@ -50,7 +50,7 @@ export default function GamePanel() {
     [eaten, setEaten] = useState(0),
     [loaded, setLoaded] = useState(false),
     [assetError, setAssetError] = useState(false),
-    [muted, setMuted] = useState(true),
+    [muted, setMuted] = useState(false),
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]);
   // A bite is broadband and gone in a moment, so the snack is a burst of
   // filtered noise rather than a tone. Two of them, a beat apart, give サクッ
@@ -90,6 +90,25 @@ export default function GamePanel() {
     source.start(start);
     source.stop(start + length + 0.01);
   }
+  // Stone is a crack over a low body. The old crash swept down to 30Hz, which
+  // a phone speaker cannot reproduce, so it read as no sound at all; this one
+  // keeps its weight where a small speaker can actually deliver it.
+  function thud(a: AudioContext) {
+    burst(a, 1300, 0, 0.4, 0.085);
+    burst(a, 520, 0.012, 0.3, 0.16);
+    const osc = a.createOscillator(),
+      gain = a.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(250, a.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(95, a.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.0001, a.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.3, a.currentTime + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.34);
+    osc.connect(gain);
+    gain.connect(a.destination);
+    osc.start();
+    osc.stop(a.currentTime + 0.36);
+  }
   function crunch(a: AudioContext, step: number) {
     const centre = 2000 + step * 280;
     burst(a, centre, 0, 0.5, 0.075);
@@ -105,18 +124,20 @@ export default function GamePanel() {
         crunch(a, step);
         return;
       }
+      if (kind === 'hit') {
+        thud(a);
+        return;
+      }
       const osc = a.createOscillator(),
         gain = a.createGain();
-      const from = kind === 'hit' ? 110 : 520;
-      const to = kind === 'hit' ? 30 : 1560;
-      const length = kind === 'fever' ? 0.42 : 0.22;
-      osc.type = kind === 'hit' ? 'triangle' : 'square';
-      osc.frequency.setValueAtTime(from, a.currentTime);
+      const length = 0.42;
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(520, a.currentTime);
       osc.frequency.exponentialRampToValueAtTime(
-        to,
+        1560,
         a.currentTime + length * 0.6,
       );
-      gain.gain.setValueAtTime(kind === 'fever' ? 0.06 : 0.085, a.currentTime);
+      gain.gain.setValueAtTime(0.06, a.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, a.currentTime + length);
       osc.connect(gain);
       gain.connect(a.destination);
@@ -126,6 +147,14 @@ export default function GamePanel() {
   }
   function start() {
     if (!sprite.current || !mermaid.current) return;
+    // Unlock audio from the click itself: a context first created inside the
+    // frame loop can be born suspended and stay silent.
+    if (sound.current) {
+      try {
+        audio.current ??= new AudioContext();
+        void audio.current.resume();
+      } catch {}
+    }
     if (overTimer.current) clearTimeout(overTimer.current);
     game.current = startGame();
     keys.current.clear();
