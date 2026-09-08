@@ -616,10 +616,12 @@ export default function GamePanel() {
   }
   function shareScoreOnX() {
     const line = `しるこさんぽで ${score}pt！しるこサンドを ${eaten} 枚たべました。`;
+    // The tag rides in the text, not in `hashtags`: X's app honours text and
+    // url from an intent but drops that parameter, so posts made from inside
+    // the app were arriving untagged while the web composer kept it.
     const params = new URLSearchParams({
-      text: `${line}\n岩をよけて、しるこサンドを集めよう。`,
+      text: `${line}\n岩をよけて、しるこサンドを集めよう。\n#しるこさんぽ`,
       url: shareUrl(),
-      hashtags: 'しるこさんぽ',
     });
     window.open(
       `https://x.com/intent/post?${params.toString()}`,
