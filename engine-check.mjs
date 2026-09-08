@@ -36,6 +36,7 @@ g = startGame();
 g.spawn = 0;
 stepGame(g, 0.016, 0, null, () => 0.5);
 assert.equal(g.items.length, 5);
+assert.equal(g.items.filter((i) => i.kind === 'snack').length, 4);
 assert.notEqual(g.items[0].x, g.items[1].x);
 assert.ok(getScrollSpeed(45) > getScrollSpeed(5));
 assert.ok(getScrollSpeed(60) > getScrollSpeed(45));
@@ -47,15 +48,21 @@ assert.equal(getSpawnInterval(120), getSpawnInterval(80));
 assert.equal(getRockCount(0), 1);
 assert.equal(getRockCount(32), 2);
 assert.equal(getRockCount(60), 3);
-assert.equal(getSnackCount(0), 4);
-assert.equal(getSnackCount(32), 3);
-assert.equal(getSnackCount(60), 2);
+assert.equal(getSnackCount(), 4);
 g = startGame();
 g.time = 60;
 g.spawn = 0;
 stepGame(g, 0.016, 0, null, () => 0.5);
 assert.equal(g.items.filter((item) => item.kind === 'rock').length, 3);
 assert.equal(new Set(g.items.map((item) => item.x)).size, 5);
+// four snacks hold even once three rocks have taken lanes, and none of them
+// is left sitting on a rock it shares a lane with
+assert.equal(g.items.filter((item) => item.kind === 'snack').length, 4);
+for (const snack of g.items.filter((item) => item.kind === 'snack')) {
+  for (const rock of g.items.filter((item) => item.kind === 'rock')) {
+    if (rock.x === snack.x) assert.ok(Math.abs(rock.y - snack.y) >= 132);
+  }
+}
 const rockRows = g.items
   .filter((item) => item.kind === 'rock')
   .map((item) => item.y)
@@ -179,4 +186,6 @@ console.log(
   c.items = [{ kind: 'rock', x: c.x, y: PLAYER_Y, size: 85, angle: 0 }];
   assert.equal(stepGame(c, 0.016, 0, null).hit, true);
 }
-console.log('PASS: combo multiplier, chain lapse, scale drop rate, サクサクタイム via scale.');
+console.log(
+  'PASS: combo multiplier, chain lapse, scale drop rate, サクサクタイム via scale.',
+);

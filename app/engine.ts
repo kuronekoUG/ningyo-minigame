@@ -86,10 +86,14 @@ export function getRockCount(time: number) {
   if (time < 34) return 2;
   return 3;
 }
-// Snacks fill every lane the rocks left free, so early runs stay generous.
-export function getSnackCount(time: number) {
-  return LANE_COUNT - getRockCount(time);
+export const SNACK_COUNT = 4;
+// A steady four, however many rocks are out — so the crunching never thins.
+export function getSnackCount() {
+  return SNACK_COUNT;
 }
+// A snack sharing a lane with a rock has to clear it by this much to be worth
+// going for.
+const LANE_CLEARANCE = 132;
 // Every fourth snack in a chain is worth another multiple, up to five.
 export function getMultiplier(combo: number) {
   return Math.min(MAX_MULTIPLIER, 1 + Math.floor(combo / 4));
@@ -151,11 +155,14 @@ export function stepGame(
     }
     // サクサクタイム holds the rocks back and hands every lane to the snacks.
     const rockCount = inFever ? 0 : getRockCount(g.time);
+    const rockRow = new Map<number, number>();
     for (const [index, lane] of lanes.slice(0, rockCount).entries()) {
+      const y = -78 - index * 145 - random() * 30;
+      rockRow.set(lane, y);
       g.items.push({
         kind: 'rock',
         x: 48 + lane * 96,
-        y: -78 - index * 145 - random() * 30,
+        y,
         size: 72 + random() * 18,
         angle: (random() - 0.5) * 0.45,
       });
@@ -163,12 +170,23 @@ export function stepGame(
     // At most one scale is in play, and only once its timer has run down.
     const dropScale =
       !inFever && g.scaleTimer <= 0 && !g.items.some((i) => i.kind === 'scale');
-    for (const [index, snackLane] of lanes.slice(rockCount).entries()) {
+    // Free lanes first, then doubling up on the rocks' lanes, so four snacks
+    // still fit once the rocks have taken three of the five.
+    const snackLanes = [
+      ...lanes.slice(rockCount),
+      ...lanes.slice(0, rockCount),
+    ].slice(0, inFever ? LANE_COUNT : getSnackCount());
+    for (const [index, snackLane] of snackLanes.entries()) {
+      let y = -128 - index * 105 - random() * 34;
+      const rock = rockRow.get(snackLane);
+      if (rock !== undefined && Math.abs(y - rock) < LANE_CLEARANCE) {
+        y = rock - LANE_CLEARANCE;
+      }
       const scale = dropScale && index === 0;
       g.items.push({
         kind: scale ? 'scale' : 'snack',
         x: 48 + snackLane * 96,
-        y: -128 - index * 105 - random() * 34,
+        y,
         size: scale ? 46 : 49,
         angle: (random() - 0.5) * 0.3,
       });
