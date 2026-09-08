@@ -80,15 +80,13 @@ button:disabled {
   flex: 1;
   min-height: 0;
   display: flex;
-  align-items: flex-start;
   width: 100%;
   max-width: min(490px, 49svh);
   margin: clamp(6px, 1.5svh, 30px) auto clamp(6px, 1.5svh, 22px);
 }
 .game-shell {
-  flex: 0 1 auto;
+  flex: 1;
   width: 100%;
-  max-height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -139,13 +137,8 @@ button:disabled {
   letter-spacing: 0;
 }
 .playfield {
-  flex: 0 1 auto;
-  /* WebKit derives the width from the height for a flex child with an aspect
-     ratio, which left the field narrower than its shell. A definite width
-     keeps the ratio driving the height, the way round it is meant to. */
+  flex: 1;
   width: 100%;
-  aspect-ratio: 3 / 4;
-  max-height: 60svh;
   min-height: 0;
   position: relative;
   overflow: hidden;
@@ -486,10 +479,12 @@ canvas {
 /* X's in-app browser keeps a bar over the foot of the page, so the game sits
    higher and leaves that space clear. */
 @media (max-width: 720px) {
-  /* An in-app browser reports more height than it shows, so the field is held
-     well inside the reported viewport and the game lands above the fold. */
-  .playfield {
-    max-height: 49svh;
+  /* An in-app browser reports more height than it shows, so the shell is held
+     well inside the reported viewport and the game lands above the fold. The
+     cap goes on the shell, not the field: capping the field made WebKit derive
+     its width from that height and leave the shell showing beside it. */
+  .game-shell {
+    max-height: 64svh;
   }
   .game-layout {
     margin-top: clamp(4px, 1svh, 14px);
