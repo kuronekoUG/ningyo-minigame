@@ -75,15 +75,15 @@ export default function Terms() {
 
         <h2>お問い合わせ</h2>
         <p>
-          ご連絡は
+          ご連絡は X の
           <a
-            href="https://github.com/kuronekoUG/shiruko-walk/issues"
+            href="https://x.com/kuroneko_ug"
             target="_blank"
             rel="noopener noreferrer"
           >
-            GitHubのIssue
+            @kuroneko_ug
           </a>
-          へお願いします。
+          までお願いします。
         </p>
 
         <p className="doc-back">
