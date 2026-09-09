@@ -13,11 +13,24 @@ export type Submission = {
   name: string;
   score: number;
   eaten: number;
+  player: string;
 } & Replay;
 
 export type Verdict =
-  | { ok: true; name: string; score: number; eaten: number; hash: string }
+  | {
+      ok: true;
+      name: string;
+      score: number;
+      eaten: number;
+      player: string;
+      hash: string;
+    }
   | { ok: false; status: number; error: string };
+
+// The token a browser keeps to claim its own line on the board. Anything that
+// is not one is treated as none rather than refused, so an older page and a
+// browser that will not store anything both still get their run counted.
+const PLAYER_SHAPE = /^[a-z0-9-]{8,64}$/i;
 
 export function cleanName(value: string) {
   return Array.from(value.normalize('NFKC').trim().replace(/\s+/g, ' '))
@@ -72,7 +85,7 @@ function isInputEvent(value: unknown): value is InputEvent {
 
 // The score is not taken on trust: the run is played again here from the seed
 // and the inputs, and only a score the replay also arrives at is accepted.
-export function verify(body: unknown): Verdict {
+export function verify(body: unknown, named = true): Verdict {
   const fail = (status: number, error: string): Verdict => ({
     ok: false,
     status,
@@ -82,9 +95,13 @@ export function verify(body: unknown): Verdict {
     return fail(400, '入力内容を確認してください。');
   const s = body as Partial<Submission>;
 
+  // A run banked for the tally alone carries no name, so there is nothing to
+  // check and nothing to show.
   const name = typeof s.name === 'string' ? cleanName(s.name) : '';
-  const problem = nameProblem(name);
-  if (problem) return fail(400, problem);
+  if (named) {
+    const problem = nameProblem(name);
+    if (problem) return fail(400, problem);
+  }
 
   if (!Number.isInteger(s.score) || (s.score as number) < 0) {
     return fail(400, 'スコアが正しくありません。');
@@ -127,5 +144,15 @@ export function verify(body: unknown): Verdict {
   if (run.score !== s.score || run.eaten !== s.eaten) {
     return fail(422, '記録とスコアが一致しません。');
   }
-  return { ok: true, name, score: run.score, eaten: run.eaten, hash: '' };
+  return {
+    ok: true,
+    name: named ? name : '',
+    score: run.score,
+    eaten: run.eaten,
+    player:
+      typeof s.player === 'string' && PLAYER_SHAPE.test(s.player)
+        ? s.player
+        : '',
+    hash: '',
+  };
 }

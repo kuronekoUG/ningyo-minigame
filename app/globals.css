@@ -855,3 +855,45 @@ a.save-button {
     min-height: 44px;
   }
 }
+/* The tally belongs to everyone, so it sits quietly under the card's own
+   numbers. The class carries the card too: `.start-card p` would otherwise
+   outrank a bare class and hand it the 16px body size. */
+.start-card .total-line {
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin: 2px 0 0;
+  opacity: 0.72;
+}
+.start-card .total-line strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-height: 620px) {
+  .start-card .total-line {
+    font-size: 11px;
+  }
+  .start-card .total-line strong {
+    font-size: 13px;
+  }
+}
+/* Ten places is four more rows than the board used to carry. The playfield
+   clips what leaves it, so on a short screen the list tightens rather than
+   pushing the close button past the edge. */
+@media (max-height: 760px) {
+  .ranking {
+    font-size: 12px;
+  }
+  .ranking li {
+    padding: 0 4px;
+  }
+}
+/* On the result card the line sits under the run's own count, so it keeps the
+   tighter rhythm the rest of that card uses. */
+.over-card .total-line {
+  margin: -4px 0 10px;
+}
+@media (max-height: 620px) {
+  .over-card .total-line {
+    margin: -3px 0 6px;
+  }
+}

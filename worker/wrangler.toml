@@ -8,4 +8,4 @@ ALLOWED_ORIGIN = "https://kuronekoug.github.io"
 [[d1_databases]]
 binding = "DB"
 database_name = "shiruko-walk"
-database_id = "PUT-THE-ID-FROM-WRANGLER-HERE"
+database_id = "e7a06315-ab0f-4450-b2ac-054267c20b3d"

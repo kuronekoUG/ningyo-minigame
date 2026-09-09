@@ -32,7 +32,10 @@ import { withBase } from './base-path';
 import {
   NAME_LENGTH,
   SCORES_API,
+  PLACES,
+  bankRun,
   fetchScores,
+  fetchTotal,
   submitScore,
   type Entry,
 } from './ranking.ts';
@@ -83,6 +86,8 @@ export default function GamePanel() {
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     lastGameOverLine = useRef(0),
+    // The seed of the run already sent to the tally, so one crash counts once.
+    banked = useRef(-1),
     primary = useRef<HTMLButtonElement>(null),
     // Everything the server needs to play the run back and check the score.
     rng = useRef(makeRandom(1)),
@@ -102,8 +107,10 @@ export default function GamePanel() {
     [beatBest, setBeatBest] = useState(false),
     [name, setName] = useState(''),
     [ranking, setRanking] = useState<Entry[] | null>(null),
+    [total, setTotal] = useState<number | null>(null),
     [rankOpen, setRankOpen] = useState(false),
     [posted, setPosted] = useState(false),
+    [kept, setKept] = useState(false),
     [sending, setSending] = useState(false),
     [rankError, setRankError] = useState(''),
     [shot, setShot] = useState<{
@@ -208,6 +215,7 @@ export default function GamePanel() {
     setRanking(null);
     setRankOpen(false);
     setPosted(false);
+    setKept(false);
     setName('');
     setRankError('');
     setBeatBest(false);
@@ -228,6 +236,20 @@ export default function GamePanel() {
       setMode('playing');
       field.current?.focus();
     }
+  }
+  // Almost nobody types a name, so waiting for the board would leave the tally
+  // counting a fraction of what the cave actually handed out. The run goes as
+  // soon as it ends, without one. A run with nothing to add is not worth a
+  // request, and a failure is not worth telling the player about.
+  function bankThisRun(final: number, collected: number) {
+    if (SCORES_API === '' || collected === 0) return;
+    if (banked.current === log.current.seed) return;
+    banked.current = log.current.seed;
+    // The run's own totals, not the state React has yet to catch up to: the
+    // server checks the score against its replay and refuses a stale one.
+    bankRun(final, collected, log.current)
+      .then(setTotal)
+      .catch(() => {});
   }
   useEffect(() => {
     const img = new Image();
@@ -392,6 +414,7 @@ export default function GamePanel() {
         lastGameOverLine.current = lineIndex;
         setGameOverLine(GAME_OVER_LINES[lineIndex]);
         setMode('crashed');
+        bankThisRun(g.score, g.eaten);
         keys.current.clear();
         target.current = null;
         overTimer.current = setTimeout(() => {
@@ -712,12 +735,25 @@ export default function GamePanel() {
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
   }, [mode]);
+  // The one number on the card that is not about this player, so it comes with
+  // the page rather than waiting for the ranking to be opened. Without an
+  // endpoint there is no tally, and the line stays away.
+  useEffect(() => {
+    if (SCORES_API === '') return;
+    const stop = new AbortController();
+    fetchTotal(stop.signal)
+      .then(setTotal)
+      .catch(() => {});
+    return () => stop.abort();
+  }, []);
   async function sendScore() {
     if (sending || !name.trim()) return;
     setSending(true);
     setRankError('');
     try {
-      setRanking(await submitScore(name.trim(), score, eaten, log.current));
+      const answer = await submitScore(name.trim(), score, eaten, log.current);
+      setRanking(answer.scores);
+      setKept(answer.kept);
       setPosted(true);
     } catch (error) {
       setRankError(
@@ -777,6 +813,16 @@ export default function GamePanel() {
   const release = () => {
     target.current = null;
   };
+  // What the cave has handed out to everyone, this player included. It shows
+  // where a player actually looks — the start card, and the result of the run
+  // that has just joined it. Not on the board, which is about who did best.
+  // It stays away until the number is in.
+  const totalLine =
+    total === null ? null : (
+      <p className="total-line">
+        <strong>{total.toLocaleString('ja-JP')}</strong> 枚 みんなでたべた
+      </p>
+    );
   return (
     <section className="game-shell" aria-label="しるこさんぽ">
       <div className="hud">
@@ -871,6 +917,7 @@ export default function GamePanel() {
                     自己ベスト <strong>{best.score}</strong> pt
                   </p>
                 )}
+                {totalLine}
                 <span className="start-hint">← → で移動・スマホはスワイプ</span>
               </>
             )}
@@ -930,7 +977,9 @@ export default function GamePanel() {
           <div className="start-card over-card">
             <span className="tiny-caps">RANKING</span>
             {posted ? (
-              <p className="shot-hint">のせました。</p>
+              <p className="shot-hint">
+                {kept ? 'まえの記録のほうが上でした。' : 'のせました。'}
+              </p>
             ) : (
               <div className="rank-entry">
                 <input
@@ -947,7 +996,7 @@ export default function GamePanel() {
             )}
             {rankError && <p className="rank-error">{rankError}</p>}
             <ol className="ranking">
-              {(ranking ?? []).slice(0, 6).map((entry, index) => (
+              {(ranking ?? []).slice(0, PLACES).map((entry, index) => (
                 <li key={`${entry.created_at}-${entry.name}`}>
                   <span>{index + 1}</span>
                   <b>{entry.name}</b>
@@ -977,15 +1026,20 @@ export default function GamePanel() {
             <p className="eaten-line">
               しるこサンド <strong>{eaten}</strong> 枚
             </p>
-            {best.score > 0 && (
+            {/* A run that fell short is not worth measuring against the best
+                one: the card says how it went and leaves it there. What is
+                left only shows when there is something to say. */}
+            {best.score > 0 && (beatBest || score === best.score) && (
               <p className="best-line">
                 {beatBest
                   ? `これまでのベスト ${best.score} pt`
-                  : score === best.score
-                    ? '自己ベストに並んだ'
-                    : `ベストまで あと ${best.score - score} pt`}
+                  : '自己ベストに並んだ'}
               </p>
             )}
+            {/* Where the number means the most: the run just ended has been
+                added to it. The start card is the only other place it shows,
+                and after the first run nobody goes back there. */}
+            {totalLine}
             <button className="share-button" onClick={shareScoreOnX}>
               <span className="x-mark" aria-hidden="true">
                 X
