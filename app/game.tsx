@@ -934,7 +934,7 @@ export default function GamePanel() {
           aria-label="上から流れる岩をよけて、しるこサンドを集めるゲーム"
         />
         <div className="darkness" />
-        {mode === 'ready' && (
+        {mode === 'ready' && !rankOpen && (
           <div className="start-card with-sprite">
             <NextImage
               className="sprite-preview"
@@ -973,6 +973,15 @@ export default function GamePanel() {
                   </p>
                 )}
                 {totalLine}
+                {SCORES_API !== '' && (
+                  <button
+                    className="start-ranking-button"
+                    onClick={openRanking}
+                  >
+                    <Trophy size={16} />
+                    ランキングを見る
+                  </button>
+                )}
                 <span className="start-hint">← → で移動・スマホはスワイプ</span>
               </>
             )}
@@ -1028,14 +1037,16 @@ export default function GamePanel() {
             </button>
           </div>
         )}
-        {mode === 'over' && !shot && rankOpen && (
+        {(mode === 'ready' || mode === 'over') && !shot && rankOpen && (
           <div className="start-card over-card">
-            <span className="tiny-caps">ランキングに登録</span>
-            {posted ? (
+            <span className="tiny-caps">
+              {mode === 'over' ? 'ランキングに登録' : 'RANKING'}
+            </span>
+            {mode === 'over' && posted ? (
               <p className="shot-hint">
                 {kept ? 'まえの記録のほうが上でした。' : 'のせました。'}
               </p>
-            ) : (
+            ) : mode === 'over' ? (
               <div className="rank-entry">
                 <input
                   value={name}
@@ -1048,8 +1059,11 @@ export default function GamePanel() {
                   {sending ? '送信中…' : '登録'}
                 </button>
               </div>
-            )}
+            ) : null}
             {rankError && <p className="rank-error">{rankError}</p>}
+            {ranking === null && !rankError && (
+              <p className="ranking-loading">読み込み中…</p>
+            )}
             <ol className="ranking">
               {(ranking ?? []).slice(0, PLACES).map((entry, index) => (
                 <li key={`${entry.created_at}-${entry.name}`}>
