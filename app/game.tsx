@@ -1030,7 +1030,7 @@ export default function GamePanel() {
         )}
         {mode === 'over' && !shot && rankOpen && (
           <div className="start-card over-card">
-            <span className="tiny-caps">RANKING</span>
+            <span className="tiny-caps">ランキングに登録</span>
             {posted ? (
               <p className="shot-hint">
                 {kept ? 'まえの記録のほうが上でした。' : 'のせました。'}
@@ -1041,11 +1041,11 @@ export default function GamePanel() {
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   maxLength={NAME_LENGTH}
-                  placeholder="なまえ"
+                  placeholder={`なまえ（${NAME_LENGTH}文字まで）`}
                   aria-label="ランキングに載せる名前"
                 />
                 <button onClick={sendScore} disabled={sending || !name.trim()}>
-                  {sending ? '送信中…' : 'のせる'}
+                  {sending ? '送信中…' : '登録'}
                 </button>
               </div>
             )}
@@ -1107,9 +1107,12 @@ export default function GamePanel() {
                 画像を保存
               </button>
               {SCORES_API !== '' && (
-                <button className="save-button" onClick={openRanking}>
+                <button
+                  className="save-button ranking-button"
+                  onClick={openRanking}
+                >
                   <Trophy size={16} />
-                  ランキング
+                  記録をのせる
                 </button>
               )}
             </div>

@@ -471,6 +471,15 @@ canvas {
   font-size: 13px;
   gap: 6px;
 }
+.button-row .ranking-button {
+  background: #e4f3ec;
+  border-color: #2b766f;
+  color: #17544f;
+  font-weight: 800;
+}
+.button-row .ranking-button:hover {
+  background: #cce9de;
+}
 .rank-entry {
   display: flex;
   gap: 6px;
