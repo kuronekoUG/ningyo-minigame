@@ -56,3 +56,26 @@ npx wrangler deploy --config worker/wrangler.toml
 
 これは偽のスコアを送る行為を防ぎますが、うまく自動操作するプログラムまでは
 防げません。
+
+### 名前
+
+名前は10文字までで、使える文字をひらがな・カタカナ・漢字・英数字と少数の
+記号に限っています。許可した文字だけを通すので、幅ゼロ文字や書字方向の
+上書き、結合文字の重ねがけといった表示を壊す入力は届きません。あわせて、
+ごく基本的な語のリストも弾きます。ただしリストで防げる範囲は限られます。
+
+### 登録の削除
+
+すり抜けたものを消せるように、管理用のトークンを設定します。
+
+```bash
+npx wrangler secret put ADMIN_TOKEN --config worker/wrangler.toml
+```
+
+削除は id を指定します。id はランキングの取得結果に入っています。
+
+```bash
+curl -X DELETE -H "Authorization: Bearer <TOKEN>" https://<worker>/scores/<id>
+```
+
+トークンを設定していないあいだ、削除は誰にもできません。

@@ -6,6 +6,7 @@ export const SCORES_API = process.env.NEXT_PUBLIC_SCORES_API ?? '';
 export const NAME_LENGTH = 10;
 
 export type Entry = {
+  id: string;
   name: string;
   score: number;
   eaten: number;

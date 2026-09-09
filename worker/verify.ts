@@ -25,6 +25,39 @@ export function cleanName(value: string) {
     .join('');
 }
 
+// A list of what a name may contain rather than what it may not. Anything
+// outside this is refused, which takes care of zero-width joiners, direction
+// overrides and stacked combining marks — the characters used to break a
+// list's layout — without having to name them.
+const NAME_SHAPE =
+  /^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}a-zA-Z0-9ー〜・_\-!?%&+.,'*(): ]+$/u;
+// Only the plainest slurs; a list can never be complete, so this is a first
+// pass and not the whole answer.
+const BLOCKED = [
+  'fuck',
+  'shit',
+  'bitch',
+  'cunt',
+  'nigger',
+  'faggot',
+  'rape',
+  'しね',
+  '死ね',
+  'ころす',
+  '殺す',
+  'きちがい',
+  'basi',
+];
+export function nameProblem(name: string) {
+  if (!name) return '名前を入力してください。';
+  if (!NAME_SHAPE.test(name)) return 'その名前は使えない文字を含んでいます。';
+  const flat = name.toLowerCase().replace(/[\s_\-・]/g, '');
+  if (BLOCKED.some((word) => flat.includes(word))) {
+    return 'その名前は使えません。';
+  }
+  return '';
+}
+
 function isInputEvent(value: unknown): value is InputEvent {
   if (!Array.isArray(value) || value.length !== 3) return false;
   const [tick, direction, target] = value as unknown[];
@@ -50,7 +83,8 @@ export function verify(body: unknown): Verdict {
   const s = body as Partial<Submission>;
 
   const name = typeof s.name === 'string' ? cleanName(s.name) : '';
-  if (!name) return fail(400, '名前を入力してください。');
+  const problem = nameProblem(name);
+  if (problem) return fail(400, problem);
 
   if (!Number.isInteger(s.score) || (s.score as number) < 0) {
     return fail(400, 'スコアが正しくありません。');

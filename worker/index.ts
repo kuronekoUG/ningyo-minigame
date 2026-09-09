@@ -10,16 +10,24 @@ type D1Statement = {
 type Env = {
   DB: { prepare: (query: string) => D1Statement };
   ALLOWED_ORIGIN: string;
+  // wrangler secret put ADMIN_TOKEN — with none set, nothing can be deleted
+  ADMIN_TOKEN?: string;
 };
-type Row = { name: string; score: number; eaten: number; created_at: number };
+type Row = {
+  id: string;
+  name: string;
+  score: number;
+  eaten: number;
+  created_at: number;
+};
 
 const TOP = 30;
 
 function cors(origin: string) {
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -52,13 +60,34 @@ const worker = {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: cors(origin) });
     }
+    // A name that gets past the filter still has to be removable without
+    // opening the database by hand: DELETE /scores/<id> with the admin token.
+    if (request.method === 'DELETE') {
+      const id = url.pathname.startsWith('/scores/')
+        ? url.pathname.slice('/scores/'.length)
+        : '';
+      const offered = (request.headers.get('Authorization') ?? '').replace(
+        /^Bearer /,
+        '',
+      );
+      if (!env.ADMIN_TOKEN || offered !== env.ADMIN_TOKEN) {
+        return json({ error: 'not allowed' }, 401, origin);
+      }
+      if (!id) return json({ error: 'id required' }, 400, origin);
+      try {
+        await env.DB.prepare('DELETE FROM scores WHERE id = ?').bind(id).run();
+        return json({ deleted: id }, 200, origin);
+      } catch {
+        return json({ error: 'could not delete' }, 503, origin);
+      }
+    }
     if (url.pathname !== '/scores')
       return json({ error: 'not found' }, 404, origin);
 
     if (request.method === 'GET') {
       try {
         const { results } = await env.DB.prepare(
-          'SELECT name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?',
+          'SELECT id, name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?',
         )
           .bind(TOP)
           .all<Row>();
@@ -114,7 +143,7 @@ const worker = {
       return json({ error: 'この記録はすでに登録されています。' }, 409, origin);
     }
     const { results } = await env.DB.prepare(
-      'SELECT name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?',
+      'SELECT id, name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?',
     )
       .bind(TOP)
       .all<Row>();
