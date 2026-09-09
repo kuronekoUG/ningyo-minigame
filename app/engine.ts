@@ -1,3 +1,46 @@
+// A run is replayed on the server to check the score it claims, so the whole
+// simulation has to be reproducible: one fixed step, one seeded generator, and
+// no maths beyond min/max/floor/abs, which every engine agrees on exactly.
+export const STEP = 1 / 60;
+export function makeRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// [tick, direction, target] — written only when one of them changes.
+export type InputEvent = [number, number, number | null];
+export type Replay = {
+  seed: number;
+  ticks: number;
+  inputs: InputEvent[];
+};
+export function replay({ seed, ticks, inputs }: Replay) {
+  const random = makeRandom(seed);
+  const g = startGame();
+  let cursor = 0,
+    direction = 0,
+    target: number | null = null;
+  for (let tick = 0; tick < ticks; tick++) {
+    while (cursor < inputs.length && inputs[cursor][0] === tick) {
+      direction = inputs[cursor][1];
+      target = inputs[cursor][2];
+      cursor++;
+    }
+    if (stepGame(g, STEP, direction, target, random).hit) break;
+  }
+  return {
+    score: g.score,
+    eaten: g.eaten,
+    time: g.time,
+    crashed: g.mode !== 'playing',
+  };
+}
+
 export const WIDTH = 480;
 export const HEIGHT = 640;
 export const PLAYER_Y = 524;

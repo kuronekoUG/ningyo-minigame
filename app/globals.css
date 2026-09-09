@@ -453,6 +453,83 @@ canvas {
     margin: -6px 0 5px;
   }
 }
+.button-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.button-row .save-button {
+  flex: 1;
+  margin-bottom: 0;
+  font-size: 13px;
+  gap: 6px;
+}
+.rank-entry {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.rank-entry input {
+  flex: 1;
+  min-width: 0;
+  border: 2px solid #2b5a68;
+  border-radius: 50px;
+  background: #fff;
+  color: #173f52;
+  font: inherit;
+  font-size: 14px;
+  padding: 0 14px;
+  min-height: 38px;
+}
+.rank-entry button {
+  border: 2px solid #2b5a68;
+  border-radius: 50px;
+  background: #2b5a68;
+  color: #fffdf4;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 16px;
+  min-height: 38px;
+}
+.rank-entry button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ranking {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 13px;
+}
+.ranking li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 4px;
+}
+.ranking span {
+  width: 1.4em;
+  text-align: right;
+  opacity: 0.6;
+  font-size: 11px;
+}
+.ranking b {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ranking i {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.rank-error {
+  font-size: 12px;
+  color: #a33b33;
+  margin: -4px 0 8px;
+}
 .result-shot {
   display: block;
   width: 100%;
@@ -766,6 +843,13 @@ a.save-button {
   .over-card .save-button {
     min-height: 35px;
     margin-bottom: 6px;
+  }
+  .over-card .button-row {
+    gap: 6px;
+    margin-bottom: 7px;
+  }
+  .over-card .button-row .save-button {
+    font-size: 12px;
   }
   .over-card .primary-button {
     min-height: 44px;

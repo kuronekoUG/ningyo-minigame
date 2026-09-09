@@ -30,6 +30,9 @@ jobs:
       - run: npm run build:pages
         env:
           NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Set this repository variable to the deployed worker's /scores URL to
+          # turn the ranking on; with it unset the game simply has no ranking.
+          NEXT_PUBLIC_SCORES_API: ${{ vars.SCORES_API }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist/client

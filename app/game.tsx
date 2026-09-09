@@ -4,6 +4,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  Trophy,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -15,6 +16,10 @@ import {
   stepGame,
   getScrollSpeed,
   getMultiplier,
+  makeRandom,
+  STEP,
+  type InputEvent,
+  type Replay,
   COMBO_WINDOW,
   MAX_MULTIPLIER,
   WIDTH,
@@ -24,8 +29,20 @@ import {
 } from './engine';
 import { GAME_OVER_LINES } from './game-over-lines';
 import { withBase } from './base-path';
+import {
+  NAME_LENGTH,
+  SCORES_API,
+  fetchScores,
+  submitScore,
+  type Entry,
+} from './ranking.ts';
 
 const BEST_KEY = 'shirukosanpo.best';
+// Outside the component: the analyser reads a Math.random call in there as an
+// impure render, though this one only ever runs from the start button.
+function newSeed() {
+  return (Math.random() * 0xffffffff) >>> 0;
+}
 type Best = { score: number; eaten: number };
 // The run has to be worth comparing to something, and there is no server to
 // compare against. Reading can throw in a private window, so it is guarded.
@@ -66,7 +83,14 @@ export default function GamePanel() {
     audio = useRef<AudioContext | null>(null),
     overTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     lastGameOverLine = useRef(0),
-    primary = useRef<HTMLButtonElement>(null);
+    primary = useRef<HTMLButtonElement>(null),
+    // Everything the server needs to play the run back and check the score.
+    rng = useRef(makeRandom(1)),
+    log = useRef<Replay>({ seed: 1, ticks: 0, inputs: [] }),
+    sent = useRef<{ direction: number; target: number | null }>({
+      direction: 0,
+      target: null,
+    });
   const [mode, setMode] = useState<Mode>('ready'),
     [score, setScore] = useState(0),
     [eaten, setEaten] = useState(0),
@@ -76,6 +100,12 @@ export default function GamePanel() {
     [gameOverLine, setGameOverLine] = useState<string>(GAME_OVER_LINES[0]),
     [best, setBest] = useState<Best>({ score: 0, eaten: 0 }),
     [beatBest, setBeatBest] = useState(false),
+    [name, setName] = useState(''),
+    [ranking, setRanking] = useState<Entry[] | null>(null),
+    [rankOpen, setRankOpen] = useState(false),
+    [posted, setPosted] = useState(false),
+    [sending, setSending] = useState(false),
+    [rankError, setRankError] = useState(''),
     [shot, setShot] = useState<{
       url: string;
       file: File;
@@ -166,10 +196,20 @@ export default function GamePanel() {
       } catch {}
     }
     if (overTimer.current) clearTimeout(overTimer.current);
+    // A fresh seed per run, recorded so the run can be replayed exactly.
+    const seed = newSeed();
+    rng.current = makeRandom(seed);
+    log.current = { seed, ticks: 0, inputs: [] };
+    sent.current = { direction: 0, target: null };
     game.current = startGame();
     keys.current.clear();
     target.current = null;
     closeShot();
+    setRanking(null);
+    setRankOpen(false);
+    setPosted(false);
+    setName('');
+    setRankError('');
     setBeatBest(false);
     setScore(0);
     setEaten(0);
@@ -301,14 +341,42 @@ export default function GamePanel() {
     let frame = 0,
       last = 0,
       backgroundOffset = 0;
+    let carry = 0;
     const tick = (now: number) => {
-      const dt = last ? Math.min((now - last) / 1000, 0.04) : 0;
+      const elapsed = last ? Math.min((now - last) / 1000, 0.25) : 0;
       last = now;
       const g = game.current;
       const direction =
         (keys.current.has('arrowright') || keys.current.has('d') ? 1 : 0) -
         (keys.current.has('arrowleft') || keys.current.has('a') ? 1 : 0);
-      const result = stepGame(g, dt, direction, target.current);
+      // Fixed steps, so the run is the same every time it is played back. Real
+      // time only decides how many of them this frame is worth.
+      carry += elapsed;
+      const result = { ate: false, hit: false, feverStarted: false };
+      const playing = g.mode === 'playing';
+      while (carry >= STEP) {
+        carry -= STEP;
+        if (playing && result.hit) break;
+        if (playing) {
+          const previous = sent.current;
+          if (
+            previous.direction !== direction ||
+            previous.target !== target.current
+          ) {
+            log.current.inputs.push([
+              log.current.ticks,
+              direction,
+              target.current,
+            ] as InputEvent);
+            sent.current = { direction, target: target.current };
+          }
+          log.current.ticks++;
+        }
+        const step = stepGame(g, STEP, direction, target.current, rng.current);
+        result.ate = result.ate || step.ate;
+        result.hit = result.hit || step.hit;
+        result.feverStarted = result.feverStarted || step.feverStarted;
+      }
       if (result.ate) {
         setScore(g.score);
         setEaten(g.eaten);
@@ -343,11 +411,14 @@ export default function GamePanel() {
       const ctx = canvas.current?.getContext('2d');
       if (ctx) {
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        // The backdrop is decoration, so it rides real time rather than the
+        // fixed steps the simulation runs on.
         if (g.mode === 'playing') {
           backgroundOffset =
-            (backgroundOffset + getScrollSpeed(g.time) * dt) % (HEIGHT * 2);
+            (backgroundOffset + getScrollSpeed(g.time) * elapsed) %
+            (HEIGHT * 2);
         } else if (g.mode === 'ready') {
-          backgroundOffset = (backgroundOffset + 8 * dt) % (HEIGHT * 2);
+          backgroundOffset = (backgroundOffset + 8 * elapsed) % (HEIGHT * 2);
         }
         if (cave.current) {
           for (let tile = -2; tile <= 1; tile++) {
@@ -641,6 +712,31 @@ export default function GamePanel() {
   useEffect(() => {
     if (mode === 'over' || mode === 'paused') primary.current?.focus();
   }, [mode]);
+  async function sendScore() {
+    if (sending || !name.trim()) return;
+    setSending(true);
+    setRankError('');
+    try {
+      setRanking(await submitScore(name.trim(), score, eaten, log.current));
+      setPosted(true);
+    } catch (error) {
+      setRankError(
+        error instanceof Error ? error.message : '登録できませんでした。',
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+  // Opening the board loads it, so a player sees where they stand whether or
+  // not they put a name in.
+  function openRanking() {
+    setRankOpen(true);
+    setRankError('');
+    if (ranking) return;
+    fetchScores()
+      .then(setRanking)
+      .catch(() => setRankError('ランキングを読み込めませんでした。'));
+  }
   function closeShot() {
     setShot((current) => {
       if (current) URL.revokeObjectURL(current.url);
@@ -674,7 +770,9 @@ export default function GamePanel() {
     if (!box) return;
     const painted = WIDTH * Math.min(box.width / WIDTH, box.height / HEIGHT);
     const left = box.left + (box.width - painted) / 2;
-    target.current = ((e.clientX - left) / painted) * WIDTH;
+    // Rounded to the pixel: it is imperceptible to steer by, and it keeps the
+    // replay log small and free of long decimals.
+    target.current = Math.round(((e.clientX - left) / painted) * WIDTH);
   }
   const release = () => {
     target.current = null;
@@ -828,7 +926,45 @@ export default function GamePanel() {
             </button>
           </div>
         )}
-        {mode === 'over' && !shot && (
+        {mode === 'over' && !shot && rankOpen && (
+          <div className="start-card over-card">
+            <span className="tiny-caps">RANKING</span>
+            {posted ? (
+              <p className="shot-hint">のせました。</p>
+            ) : (
+              <div className="rank-entry">
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  maxLength={NAME_LENGTH}
+                  placeholder="なまえ"
+                  aria-label="ランキングに載せる名前"
+                />
+                <button onClick={sendScore} disabled={sending || !name.trim()}>
+                  {sending ? '送信中…' : 'のせる'}
+                </button>
+              </div>
+            )}
+            {rankError && <p className="rank-error">{rankError}</p>}
+            <ol className="ranking">
+              {(ranking ?? []).slice(0, 6).map((entry, index) => (
+                <li key={`${entry.created_at}-${entry.name}`}>
+                  <span>{index + 1}</span>
+                  <b>{entry.name}</b>
+                  <i>{entry.score}</i>
+                </li>
+              ))}
+            </ol>
+            <button
+              ref={primary}
+              className="primary-button"
+              onClick={() => setRankOpen(false)}
+            >
+              とじる
+            </button>
+          </div>
+        )}
+        {mode === 'over' && !shot && !rankOpen && (
           <div className="start-card over-card">
             <span className="tiny-caps">
               {beatBest && best.score > 0 ? '自己ベスト更新！' : 'GAME OVER'}
@@ -856,10 +992,18 @@ export default function GamePanel() {
               </span>
               スコアをポスト
             </button>
-            <button className="save-button" onClick={saveResultCard}>
-              <Download size={17} />
-              画像を保存
-            </button>
+            <div className="button-row">
+              <button className="save-button" onClick={saveResultCard}>
+                <Download size={17} />
+                画像を保存
+              </button>
+              {SCORES_API !== '' && (
+                <button className="save-button" onClick={openRanking}>
+                  <Trophy size={16} />
+                  ランキング
+                </button>
+              )}
+            </div>
             <button ref={primary} className="primary-button" onClick={start}>
               <RotateCcw size={18} />
               もういちどすすむ
