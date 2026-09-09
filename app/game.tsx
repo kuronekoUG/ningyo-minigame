@@ -112,6 +112,7 @@ export default function GamePanel() {
     [rankOpen, setRankOpen] = useState(false),
     [posted, setPosted] = useState(false),
     [kept, setKept] = useState(false),
+    [placedRank, setPlacedRank] = useState<number | null>(null),
     [sending, setSending] = useState(false),
     [rankError, setRankError] = useState(''),
     [shot, setShot] = useState<{
@@ -217,6 +218,7 @@ export default function GamePanel() {
     setRankOpen(false);
     setPosted(false);
     setKept(false);
+    setPlacedRank(null);
     setName('');
     setRankError('');
     setBeatBest(false);
@@ -808,6 +810,7 @@ export default function GamePanel() {
       const answer = await submitScore(name.trim(), score, eaten, log.current);
       setRanking(answer.scores);
       setKept(answer.kept);
+      setPlacedRank(answer.rank);
       setPosted(true);
     } catch (error) {
       setRankError(
@@ -1043,8 +1046,10 @@ export default function GamePanel() {
               {mode === 'over' ? 'ランキングに登録' : 'RANKING'}
             </span>
             {mode === 'over' && posted ? (
-              <p className="shot-hint">
-                {kept ? 'まえの記録のほうが上でした。' : 'のせました。'}
+              <p className="rank-result">
+                {kept ? '自己ベストは現在 ' : 'あなたの記録は '}
+                <strong>{placedRank}</strong> 位です。
+                {kept && <small>今回より前の記録が上でした。</small>}
               </p>
             ) : mode === 'over' ? (
               <div className="rank-entry">

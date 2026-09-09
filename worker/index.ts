@@ -20,6 +20,7 @@ type Row = {
   eaten: number;
   created_at: number;
 };
+type Standing = Pick<Row, 'id' | 'score' | 'created_at'>;
 
 const TOP = 30;
 
@@ -72,6 +73,24 @@ async function tally(env: Env) {
     'SELECT COALESCE(SUM(eaten), 0) AS eaten FROM runs',
   ).all<{ eaten: number }>();
   return results[0]?.eaten ?? 0;
+}
+export async function rankOf(env: Env, standing: Standing) {
+  const { results } = await env.DB.prepare(
+    `SELECT COUNT(*) + 1 AS rank FROM scores
+     WHERE score > ?
+        OR (score = ? AND created_at < ?)
+        OR (score = ? AND created_at = ? AND id < ?)`,
+  )
+    .bind(
+      standing.score,
+      standing.score,
+      standing.created_at,
+      standing.score,
+      standing.created_at,
+      standing.id,
+    )
+    .all<{ rank: number }>();
+  return results[0]?.rank ?? 1;
 }
 async function readBody(request: Request, origin: string) {
   const length = Number(request.headers.get('content-length') ?? 0);
@@ -158,7 +177,7 @@ const worker = {
     if (request.method === 'GET') {
       try {
         const { results } = await env.DB.prepare(
-          'SELECT id, name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?',
+          'SELECT id, name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC, id ASC LIMIT ?',
         )
           .bind(TOP)
           .all<Row>();
@@ -195,19 +214,22 @@ const worker = {
     // starts a new line — close enough, and it beats a name, which in this
     // game half the players type the same way.
     let kept = false;
+    let placed: Standing;
     try {
       const standing = verdict.player
         ? (
             await env.DB.prepare(
-              'SELECT id, score FROM scores WHERE player = ? ORDER BY score DESC LIMIT 1',
+              'SELECT id, score, created_at FROM scores WHERE player = ? ORDER BY score DESC LIMIT 1',
             )
               .bind(verdict.player)
-              .all<{ id: string; score: number }>()
+              .all<Standing>()
           ).results[0]
         : undefined;
       if (standing && verdict.score <= standing.score) {
         kept = true;
+        placed = standing;
       } else if (standing) {
+        const createdAt = Date.now();
         await env.DB.prepare(
           'UPDATE scores SET name = ?, score = ?, eaten = ?, created_at = ?, run_hash = ? WHERE id = ?',
         )
@@ -215,25 +237,33 @@ const worker = {
             verdict.name,
             verdict.score,
             verdict.eaten,
-            Date.now(),
+            createdAt,
             hash,
             standing.id,
           )
           .run();
+        placed = {
+          id: standing.id,
+          score: verdict.score,
+          created_at: createdAt,
+        };
       } else {
+        const id = crypto.randomUUID();
+        const createdAt = Date.now();
         await env.DB.prepare(
           'INSERT INTO scores (id, name, score, eaten, created_at, run_hash, player) VALUES (?, ?, ?, ?, ?, ?, ?)',
         )
           .bind(
-            crypto.randomUUID(),
+            id,
             verdict.name,
             verdict.score,
             verdict.eaten,
-            Date.now(),
+            createdAt,
             hash,
             verdict.player || null,
           )
           .run();
+        placed = { id, score: verdict.score, created_at: createdAt };
       }
     } catch {
       // the unique index on run_hash is what rejects a resent log
@@ -245,11 +275,15 @@ const worker = {
       await bank(env, hash, verdict.eaten);
     } catch {}
     const { results } = await env.DB.prepare(
-      'SELECT id, name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC LIMIT ?',
+      'SELECT id, name, score, eaten, created_at FROM scores ORDER BY score DESC, created_at ASC, id ASC LIMIT ?',
     )
       .bind(TOP)
       .all<Row>();
-    return json({ scores: results, kept }, 201, origin);
+    return json(
+      { scores: results, kept, rank: await rankOf(env, placed) },
+      201,
+      origin,
+    );
   },
 };
 

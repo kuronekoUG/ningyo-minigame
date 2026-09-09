@@ -91,8 +91,16 @@ export async function submitScore(
   const body = (await response.json().catch(() => ({}))) as {
     scores?: Entry[];
     kept?: boolean;
+    rank?: number;
     error?: string;
   };
   if (!response.ok) throw new Error(body.error ?? '登録できませんでした。');
-  return { scores: body.scores ?? [], kept: body.kept === true };
+  if (!Number.isInteger(body.rank) || (body.rank as number) < 1) {
+    throw new Error('順位を取得できませんでした。');
+  }
+  return {
+    scores: body.scores ?? [],
+    kept: body.kept === true,
+    rank: body.rank as number,
+  };
 }

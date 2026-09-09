@@ -544,6 +544,21 @@ canvas {
   color: #557581;
   font-size: 13px;
 }
+.rank-result {
+  margin: 6px 0 10px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.rank-result strong {
+  font-size: 25px;
+  color: #17544f;
+  font-variant-numeric: tabular-nums;
+}
+.rank-result small {
+  display: block;
+  font-size: 11px;
+  color: #557581;
+}
 .ranking li {
   display: flex;
   align-items: baseline;
