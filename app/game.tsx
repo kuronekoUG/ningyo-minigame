@@ -28,6 +28,7 @@ import {
   type Mode,
 } from './engine';
 import { GAME_OVER_LINES } from './game-over-lines';
+import { RenderState } from './render-state';
 import { withBase } from './base-path';
 import {
   NAME_LENGTH,
@@ -222,7 +223,7 @@ export default function GamePanel() {
     setScore(0);
     setEaten(0);
     setMode('playing');
-    field.current?.focus();
+    field.current?.focus({ preventScroll: true });
   }
   function pause() {
     const g = game.current;
@@ -234,7 +235,7 @@ export default function GamePanel() {
     } else if (g.mode === 'paused') {
       g.mode = 'playing';
       setMode('playing');
-      field.current?.focus();
+      field.current?.focus({ preventScroll: true });
     }
   }
   // Almost nobody types a name, so waiting for the board would leave the tally
@@ -293,11 +294,23 @@ export default function GamePanel() {
     // the player to come back a few times.
     let appliedHeight = 0,
       appliedWidth = 0;
+    let keyboardUntil = 0;
+    const viewport = window.visualViewport;
     const measure = () => {
-      const height = Math.min(
-        window.innerHeight,
-        window.visualViewport?.height ?? Infinity,
-      );
+      // Keyboard and zoom change the visible area, not the game layout.
+      // Keep the width-dependent layout stable while playing as browser bars move.
+      const editing = document.activeElement?.matches('input, textarea');
+      if (editing) keyboardUntil = Date.now() + 1200;
+      if (viewport && Math.abs(viewport.scale - 1) > 0.01) return;
+      if (
+        appliedHeight &&
+        window.innerWidth === appliedWidth &&
+        (editing ||
+          Date.now() < keyboardUntil ||
+          game.current.mode === 'playing')
+      )
+        return;
+      const height = Math.min(window.innerHeight, viewport?.height ?? Infinity);
       if (height <= 0) return;
       // A mobile browser's bars slide in and out as you touch the page, moving
       // this by a few dozen pixels each time. Relaying out for that made the
@@ -325,7 +338,21 @@ export default function GamePanel() {
       setTimeout(measure, 800),
       setTimeout(measure, 2000),
     ];
+    let keyboardTimer: ReturnType<typeof setTimeout> | undefined;
+    const inputFocus = () => {
+      if (document.activeElement?.matches('input, textarea')) measure();
+    };
+    const inputBlur = (event: FocusEvent) => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      // Wait for the keyboard's closing animation before measuring again.
+      keyboardUntil = Date.now() + 1200;
+      clearTimeout(keyboardTimer);
+      keyboardTimer = setTimeout(measure, 1250);
+    };
     window.addEventListener('resize', measure);
+    viewport?.addEventListener('resize', measure);
+    document.addEventListener('focusin', inputFocus);
+    document.addEventListener('focusout', inputBlur);
     window.addEventListener('orientationchange', measure);
     window.addEventListener('pageshow', measure);
     const down = (e: KeyboardEvent) => {
@@ -364,21 +391,30 @@ export default function GamePanel() {
       last = 0,
       backgroundOffset = 0;
     let carry = 0;
+    let activeGame = game.current;
+    let previousMode = activeGame.mode;
+    const render = new RenderState();
+    render.capture(activeGame);
     const tick = (now: number) => {
-      const elapsed = last ? Math.min((now - last) / 1000, 0.25) : 0;
+      let elapsed = last ? Math.min((now - last) / 1000, 0.25) : 0;
       last = now;
       const g = game.current;
+      if (g !== activeGame || g.mode !== previousMode) {
+        activeGame = g;
+        carry = 0;
+        elapsed = 0;
+        render.capture(g);
+      }
       const direction =
         (keys.current.has('arrowright') || keys.current.has('d') ? 1 : 0) -
         (keys.current.has('arrowleft') || keys.current.has('a') ? 1 : 0);
       // Fixed steps, so the run is the same every time it is played back. Real
       // time only decides how many of them this frame is worth.
-      carry += elapsed;
-      const result = { ate: false, hit: false, feverStarted: false };
       const playing = g.mode === 'playing';
+      carry = playing ? carry + elapsed : 0;
+      const result = { ate: false, hit: false, feverStarted: false };
       while (carry >= STEP) {
         carry -= STEP;
-        if (playing && result.hit) break;
         if (playing) {
           const previous = sent.current;
           if (
@@ -394,11 +430,19 @@ export default function GamePanel() {
           }
           log.current.ticks++;
         }
+        render.capture(g);
         const step = stepGame(g, STEP, direction, target.current, rng.current);
         result.ate = result.ate || step.ate;
         result.hit = result.hit || step.hit;
         result.feverStarted = result.feverStarted || step.feverStarted;
+        if (step.hit) {
+          carry = 0;
+          break;
+        }
       }
+      previousMode = g.mode;
+      const alpha = g.mode === 'playing' ? carry / STEP : 1;
+      const renderTime = render.renderTime(g, alpha);
       if (result.ate) {
         setScore(g.score);
         setEaten(g.eaten);
@@ -445,9 +489,9 @@ export default function GamePanel() {
         }
         if (cave.current) {
           for (let tile = -2; tile <= 1; tile++) {
-            // Rounded and overlapped by a pixel: a fractional offset used to
-            // leave a hairline of bare canvas between the tiles.
-            const y = Math.round(tile * HEIGHT + backgroundOffset);
+            // Overlap at the seam, keeping subpixel motion between frames.
+            const y = tile * HEIGHT + backgroundOffset;
+            if (y > HEIGHT || y + HEIGHT + 1 < 0) continue;
             if (tile % 2 === 0) {
               ctx.drawImage(cave.current, 0, y, WIDTH, HEIGHT + 1);
             } else {
@@ -503,9 +547,10 @@ export default function GamePanel() {
         } else {
           const rockAlpha = g.fever > 0 ? 0.28 : 1;
           for (const i of g.items) {
+            const y = render.itemY(i, alpha);
             if (i.kind === 'rock' && g.fever === 0) {
               ctx.save();
-              ctx.translate(i.x, i.y + i.size * 0.26);
+              ctx.translate(i.x, y + i.size * 0.26);
               ctx.scale(1, 0.34);
               ctx.beginPath();
               ctx.arc(0, 0, i.size * 0.36, 0, Math.PI * 2);
@@ -514,11 +559,11 @@ export default function GamePanel() {
               ctx.restore();
             }
             if (i.kind === 'rock') {
-              drawRock(i.x, i.y, i.size, i.angle, rockAlpha);
+              drawRock(i.x, y, i.size, i.angle, rockAlpha);
             } else if (i.kind === 'scale' && scale.current) {
               ctx.save();
-              ctx.translate(i.x, i.y);
-              ctx.rotate(i.angle + Math.sin(g.time * 3 + i.x) * 0.16);
+              ctx.translate(i.x, y);
+              ctx.rotate(i.angle + Math.sin(renderTime * 3 + i.x) * 0.16);
               ctx.drawImage(
                 scale.current,
                 -i.size / 2,
@@ -528,13 +573,15 @@ export default function GamePanel() {
               );
               ctx.restore();
             } else {
-              drawSnack(i.x, i.y, i.size, i.angle);
+              drawSnack(i.x, y, i.size, i.angle);
             }
           }
           if (mermaid.current) {
             ctx.save();
-            ctx.translate(g.x, PLAYER_Y);
-            ctx.rotate(g.mode === 'playing' ? Math.sin(g.time * 7) * 0.055 : 0);
+            ctx.translate(render.playerX(g, alpha), PLAYER_Y);
+            ctx.rotate(
+              g.mode === 'playing' ? Math.sin(renderTime * 7) * 0.055 : 0,
+            );
             ctx.drawImage(mermaid.current, -48, -48, 96, 96);
             ctx.restore();
           }
@@ -545,8 +592,9 @@ export default function GamePanel() {
             ctx.lineWidth = 3;
             ctx.font = 'bold 23px sans-serif';
             ctx.textAlign = 'center';
-            ctx.strokeText(p.text, p.x, p.y - 27);
-            ctx.fillText(p.text, p.x, p.y - 27);
+            const y = render.popY(p, alpha);
+            ctx.strokeText(p.text, p.x, y - 27);
+            ctx.fillText(p.text, p.x, y - 27);
             ctx.globalAlpha = 1;
           }
           if (g.combo > 0 || g.fever > 0) {
@@ -574,7 +622,7 @@ export default function GamePanel() {
             ctx.save();
             ctx.globalAlpha = Math.min(1, g.fever * 2);
             ctx.translate(WIDTH / 2, 104);
-            ctx.scale(1 + Math.sin(g.time * 12) * 0.035, 1);
+            ctx.scale(1 + Math.sin(renderTime * 12) * 0.035, 1);
             ctx.textAlign = 'center';
             ctx.font = 'bold 40px sans-serif';
             ctx.lineWidth = 8;
@@ -593,7 +641,11 @@ export default function GamePanel() {
       cancelAnimationFrame(frame);
       if (overTimer.current) clearTimeout(overTimer.current);
       for (const timer of settle) clearTimeout(timer);
+      clearTimeout(keyboardTimer);
       window.removeEventListener('resize', measure);
+      viewport?.removeEventListener('resize', measure);
+      document.removeEventListener('focusin', inputFocus);
+      document.removeEventListener('focusout', inputBlur);
       window.removeEventListener('orientationchange', measure);
       window.removeEventListener('pageshow', measure);
       window.removeEventListener('keydown', down);
@@ -733,8 +785,10 @@ export default function GamePanel() {
     } catch {}
   }
   useEffect(() => {
-    if (mode === 'over' || mode === 'paused') primary.current?.focus();
-  }, [mode]);
+    if (mode === 'over' || mode === 'paused') {
+      primary.current?.focus({ preventScroll: true });
+    }
+  }, [mode, rankOpen, posted, shot]);
   // The one number on the card that is not about this player, so it comes with
   // the page rather than waiting for the ranking to be opened. Without an
   // endpoint there is no tally, and the line stays away.
@@ -856,10 +910,11 @@ export default function GamePanel() {
         </div>
       </div>
       <div
-        className={`playfield ${mode === 'crashed' || mode === 'over' ? 'crashed' : ''}`}
+        className={`playfield ${mode === 'over' ? 'crashed' : mode}`}
         ref={field}
         tabIndex={-1}
         onPointerDown={(e) => {
+          if (game.current.mode !== 'playing') return;
           if (e.target instanceof Element && e.target.closest('button')) return;
           e.currentTarget.setPointerCapture(e.pointerId);
           point(e);

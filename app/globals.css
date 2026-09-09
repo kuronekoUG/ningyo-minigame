@@ -88,6 +88,7 @@ button:disabled {
 .game-shell {
   flex: 1;
   width: 100%;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -144,10 +145,12 @@ button:disabled {
   position: relative;
   overflow: hidden;
   background: #0b3142;
-  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+.playfield.playing {
+  touch-action: none;
 }
 .cave-light {
   position: absolute;
@@ -179,6 +182,10 @@ button:disabled {
   transform: translate(-50%, -50%);
   width: calc(100% - 58px);
   max-width: 370px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   background: #fffdf4f5;
   border: 2px solid #2b5a68;
   border-radius: 24px;
@@ -477,7 +484,8 @@ canvas {
   background: #fff;
   color: #173f52;
   font: inherit;
-  font-size: 14px;
+  /* Keep name entry readable without iOS focus zoom shifting the viewport. */
+  font-size: 16px;
   padding: 0 14px;
   min-height: 38px;
 }
